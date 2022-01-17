@@ -1,13 +1,98 @@
-#include <unistd.h>
 #include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <sys/socket.h>
 #include <stdlib.h>
 #include <netinet/in.h>
+#include <sys/sendfile.h>
 #include <string.h>
 #include <iostream>
 #define PORT 5000
 
+// definition error
+#define FILE_DOES_NOT_EXIST "server file doesn't exists"
+#define FILE_EMPTY "server file is empty"
+#define FILE_INDX_OUT_RANGE "query line is out of range of server file"
+#define FILE_WRITE_FAILED "failed to insert to server file"
+
 using namespace std;
+
+int Lines;
+
+void make_copy()
+{
+	int read_fd;
+	int write_fd;
+	struct stat stat_buf;
+	off_t offset = 0;
+	read_fd = open ("server_file.txt", O_RDONLY);
+	fstat (read_fd, &stat_buf);
+	write_fd = open ("server_file_temp.txt", O_WRONLY | O_CREAT, stat_buf.st_mode);
+	sendfile (write_fd, read_fd, &offset, stat_buf.st_size);
+}
+
+int countLines()
+{
+	FILE* fp = fopen("server_file.txt", "r");
+	ssize_t read;
+	char* line;
+	size_t len = 0;
+	int count = 0;
+	
+	if(fp == NULL)
+	{
+		return -1;
+	}
+	else
+	{
+		while((read = getline(&line, &len, fp)) != -1)
+		{
+			count++;
+		}
+	}
+	return count;
+}
+
+// void putLine()
+// {
+
+// }
+
+string readLine(int k)
+{
+	FILE* fp = fopen("server_file.txt", "r");
+	ssize_t read;
+	char* line;
+	size_t len = 0;
+	int count = 0;
+	
+	if(k < 0)
+	{
+		if(Lines == -1)
+		{
+			Lines = countLines();
+		}
+		k = Lines + k;
+	}
+	
+	if(fp == NULL)
+	{
+		// perror("error reading file");
+		return FILE_DOES_NOT_EXIST;
+	}
+	else
+	{
+		while((read = getline(&line, &len, fp)) != -1)
+		{
+			if(count == k)
+			{
+				return string(line);
+			}
+			count++;
+		}
+	}
+	return FILE_EMPTY;
+}
 
 int main(int argc, char const *argv[])
 {
@@ -57,8 +142,23 @@ int main(int argc, char const *argv[])
 
 	while(valread > 0 && s.compare("exit") != 0) {
 		cout << "clent: " << s << "\n";
+		if(s.compare("NLINEX") == 0)
+		{
+			Lines = countLines();
+			if(Lines == -1)
+			{
+				s = FILE_DOES_NOT_EXIST;
+			}
+			else
+				s = to_string(Lines);
+		}
+		else if(s.rfind("READX", 0) == 0)
+		{
+			s = readLine(stoi(s.substr(5)));
+		}
+		// else if(s.rfind("READX", 0) == 0)
 		bzero(buffer, 1024);
-		getline(cin, s);
+		// getline(cin, s);
 		send(new_sock, s.c_str(), s.length(), 0);
 		valread = read( new_sock , buffer, 1024);
 		s = buffer;
