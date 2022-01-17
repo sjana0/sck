@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <sys/sendfile.h>
@@ -9,11 +10,13 @@
 #include <iostream>
 #define PORT 5000
 
-// definition error
+// server messages
 #define FILE_DOES_NOT_EXIST "server file doesn't exists"
 #define FILE_EMPTY "server file is empty"
 #define FILE_INDX_OUT_RANGE "query line is out of range of server file"
 #define FILE_WRITE_FAILED "failed to insert to server file"
+#define FILE_WRITE_SUCCESS "successfully written to file"
+#define WRONG_COMMAND "command not recognized"
 
 using namespace std;
 
@@ -29,6 +32,8 @@ void make_copy()
 	fstat (read_fd, &stat_buf);
 	write_fd = open ("server_file_temp.txt", O_WRONLY | O_CREAT, stat_buf.st_mode);
 	sendfile (write_fd, read_fd, &offset, stat_buf.st_size);
+	close(read_fd);
+	close(write_fd);
 }
 
 int countLines()
@@ -50,13 +55,100 @@ int countLines()
 			count++;
 		}
 	}
+	fclose(fp);
 	return count;
 }
 
-// void putLine()
-// {
+string putLine(string s, int k)
+{
+	make_copy();
+	FILE* fp1 = fopen("server_file_temp.txt", "r");
+	FILE* fp2 = fopen("server_file.txt", "w");
+	if(Lines == -1)
+		Lines = countLines();
+	if(k < 0)
+	{
+		k = Lines + k;
+	}
+	ssize_t read;
+	char* line;
+	size_t len = 0;
+	int count = 0;
+	bool flg = false;
 
-// }
+	if(fp2 != NULL && fp1 != NULL)
+	{	
+		if(s[s.length()-1] == '\n')
+		{
+			s = s.substr(0, s.length()-1);
+		}
+		while(read = getline(&line, &len, fp1) != -1)
+		{
+			if(count == k)
+			{
+				s = to_string(k) + "\t" + s + "\n";
+				fputs(s.c_str(), fp2);
+				flg = true;
+			}
+			count++;
+			fputs(line, fp2);
+		}
+		if(flg)
+		{
+			fclose(fp1);
+			fclose(fp2);
+			return FILE_WRITE_SUCCESS;
+		}
+		else
+		{
+			fclose(fp1);
+			fclose(fp2);
+			return FILE_WRITE_FAILED;
+		}
+	}
+	else
+	{
+		fclose(fp1);
+		fclose(fp2);
+		return FILE_DOES_NOT_EXIST;
+	}
+}
+
+string putLine(string s)
+{
+	make_copy();
+	FILE* fp1 = fopen("server_file_temp.txt", "r");
+	FILE* fp2 = fopen("server_file.txt", "w");
+	
+	ssize_t read;
+	char* line;
+	size_t len = 0;
+	int count = 0;
+
+	if(fp2 != NULL && fp1 != NULL)
+	{	
+		if(s[s.length()-1] == '\n')
+		{
+			s = s.substr(0, s.length()-1);
+		}
+		while(read = getline(&line, &len, fp1) != -1)
+		{
+			count++;
+			fputs(line, fp2);
+		}
+		s = "\n" + to_string(count+1) + "\t" + s;
+		fputs(s.c_str(), fp2);
+		fclose(fp1);
+		fclose(fp2);
+		return FILE_WRITE_SUCCESS;
+	}
+	else
+	{
+		fclose(fp1);
+		fclose(fp2);
+		return FILE_DOES_NOT_EXIST;
+	}
+}
 
 string readLine(int k)
 {
@@ -86,11 +178,13 @@ string readLine(int k)
 		{
 			if(count == k)
 			{
+				fclose(fp);
 				return string(line);
 			}
 			count++;
 		}
 	}
+	fclose(fp);
 	return FILE_EMPTY;
 }
 
@@ -98,7 +192,7 @@ int main(int argc, char const *argv[])
 {
 	int sock_fd, new_sock, valread;
 	struct sockaddr_in address;
-	int opt = 1;
+	int opt = 1, i, j;
 	int addrlen = sizeof(address);
 	char buffer[1024];
 
@@ -141,7 +235,7 @@ int main(int argc, char const *argv[])
 	string s(buffer);
 
 	while(valread > 0 && s.compare("exit") != 0) {
-		cout << "clent: " << s << "\n";
+		// cout << "clent: " << s << "\n";
 		if(s.compare("NLINEX") == 0)
 		{
 			Lines = countLines();
@@ -156,6 +250,22 @@ int main(int argc, char const *argv[])
 		{
 			s = readLine(stoi(s.substr(5)));
 		}
+		else if(s.rfind("INSERTX", 0) == 0)
+		{
+			s = s.substr(8);
+			if(s[0] >= '0' && s[0] <= '9')
+			{
+				i = s.find(' ');
+				j = stoi(s.substr(0, i));
+				s = putLine(s.substr(i + 1), j);
+			}
+			else
+			{
+				s = putLine(s);
+			}
+		}
+		else
+			s = WRONG_COMMAND;
 		// else if(s.rfind("READX", 0) == 0)
 		bzero(buffer, 1024);
 		// getline(cin, s);

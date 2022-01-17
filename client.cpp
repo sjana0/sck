@@ -46,7 +46,7 @@ int main()
         bzero(buffer, 1024);
         n = read(sock_fd,buffer,1024);
         s = buffer;
-        cout << "server: " << s << "\n";
+        cout << s << "\n";
         getline(cin, s);
     }
     close(sock_fd);
