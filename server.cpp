@@ -29,12 +29,6 @@ int main(int argc, char const *argv[])
 	address.sin_addr.s_addr = INADDR_ANY;
 	address.sin_port = htons( PORT );
 
-	// if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
-	// {
-	// 	perror("setsockopt");
-	// 	exit(EXIT_FAILURE);
-	// }
-
 	// Forcefully attaching socket to the port 8080
 	if (bind(sock_fd, (struct sockaddr *)&address, sizeof(address))<0)
 	{
