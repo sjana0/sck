@@ -87,8 +87,15 @@ int main(int argc, char const *argv[])
 
 	while(valread > 0 && s.compare("exit") != 0) {
 		cout << "clent: " << s << "\n";
+		if(s.rfind("NLINEX") == 0)
+		{
+			s = to_string(countLines());
+		}
+		else
+		{
+			getline(cin, s);
+		}
 		bzero(buffer, 1024);
-		getline(cin, s);
 		send(new_sock, s.c_str(), s.length(), 0);
 		valread = read( new_sock , buffer, 1024);
 		s = buffer;
