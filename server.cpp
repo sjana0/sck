@@ -9,6 +9,30 @@
 
 using namespace std;
 
+
+int countLines()
+{
+	FILE* fp = fopen("server_file.txt", "r");
+	ssize_t read;
+	char* line;
+	size_t len = 0;
+	int count = 0;
+	
+	if(fp == NULL)
+	{
+		return -1;
+	}
+	else
+	{
+		while((read = getline(&line, &len, fp)) != -1)
+		{
+			count++;
+		}
+	}
+	fclose(fp);
+	return count;
+}
+
 int main(int argc, char const *argv[])
 {
 	int sock_fd, new_sock, valread;
