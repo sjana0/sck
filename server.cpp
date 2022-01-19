@@ -20,7 +20,7 @@
 
 using namespace std;
 
-int Lines;
+int Lines = -1;
 
 void make_copy()
 {
@@ -97,12 +97,14 @@ string putLine(string s, int k)
 		{
 			fclose(fp1);
 			fclose(fp2);
+			remove("server_file_temp.txt");
 			return FILE_WRITE_SUCCESS;
 		}
 		else
 		{
 			fclose(fp1);
 			fclose(fp2);
+			remove("server_file_temp.txt");
 			return FILE_WRITE_FAILED;
 		}
 	}
@@ -110,6 +112,7 @@ string putLine(string s, int k)
 	{
 		fclose(fp1);
 		fclose(fp2);
+		remove("server_file_temp.txt");
 		return FILE_DOES_NOT_EXIST;
 	}
 }
@@ -140,12 +143,14 @@ string putLine(string s)
 		fputs(s.c_str(), fp2);
 		fclose(fp1);
 		fclose(fp2);
+		remove("server_file_temp.txt");
 		return FILE_WRITE_SUCCESS;
 	}
 	else
 	{
 		fclose(fp1);
 		fclose(fp2);
+		remove("server_file_temp.txt");
 		return FILE_DOES_NOT_EXIST;
 	}
 }
@@ -166,6 +171,8 @@ string readLine(int k)
 		}
 		k = Lines + k;
 	}
+	if(Lines == 0)
+		return FILE_EMPTY;
 	
 	if(fp == NULL)
 	{
@@ -185,7 +192,7 @@ string readLine(int k)
 		}
 	}
 	fclose(fp);
-	return FILE_EMPTY;
+	return FILE_INDX_OUT_RANGE;
 }
 
 int main(int argc, char const *argv[])
@@ -249,6 +256,8 @@ int main(int argc, char const *argv[])
 		else if(s.rfind("READX", 0) == 0)
 		{
 			s = readLine(stoi(s.substr(5)));
+			if(s[s.length() - 1] == '\n')
+				s = s.substr(0, s.length() - 1);
 		}
 		else if(s.rfind("INSERTX", 0) == 0)
 		{
