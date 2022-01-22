@@ -23,17 +23,12 @@
 
 // semaphore operations
 
-// struct sembuf pop, vop;
-
-// #define P(s) semop(s, &pop, 1);
-// #define V(s) semop(s, &vop, 1);
-
 
 using namespace std;
 
 int Lines = -1;
 
-
+// share memory operation
 int shmid = shmget(IPC_PRIVATE, sizeof(int), 0777|IPC_CREAT);
 
 string* split(string s,char c, int& count) {
@@ -184,5 +179,4 @@ int main()
 			// send(new_sock, s.c_str(), s.length(), 0);
 		}
 	}
-
 }
