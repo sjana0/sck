@@ -53,7 +53,7 @@ string* split(string s,char c, int& count) {
 }
 
 
-int main(int argc, char const *argv[])
+int main()
 {
 	// initialize shared memory
 	int *a;
