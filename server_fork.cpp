@@ -21,9 +21,6 @@
 #define SERVER_BUSY "server is busy"
 #define MAX_CHILD 2
 
-// semaphore operations
-
-
 using namespace std;
 
 int Lines = -1;
