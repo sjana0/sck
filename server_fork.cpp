@@ -168,12 +168,6 @@ int main()
 				perror("listen");
 				exit(EXIT_FAILURE);
 			}
-			// struct linger lo = { 1, 0 };
-			// setsockopt(new_sock, SOL_SOCKET, SO_LINGER, &lo, sizeof(lo));
-			// close(sock_fd);
-			// string s(SERVER_BUSY);
-			// close(new_sock);
-			// send(new_sock, s.c_str(), s.length(), 0);
 		}
 	}
 }
