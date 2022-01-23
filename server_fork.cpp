@@ -87,7 +87,7 @@ int main()
 		exit(EXIT_FAILURE);
 	}
 
-	if (listen(sock_fd, 5) < 0)
+	if (listen(sock_fd, 1) < 0)
 	{
 		perror("listen");
 		exit(EXIT_FAILURE);
@@ -96,6 +96,7 @@ int main()
 	struct sockaddr_in cli_addr;
 	socklen_t clilen;
 	clilen = sizeof(cli_addr);
+	bool b = false;
 	while(1)
 	{
 		if(a[0] != 0)
@@ -105,32 +106,24 @@ int main()
 				perror("accept");
 				exit(EXIT_FAILURE);
 			}
+			a[0]--;
 			p = fork();
-		}
-		else
-		{
-			cout << "doing it\n";
-			close(new_sock);
-			while(a[0] == 0);
 		}
 		if(p)
 		{
-			// close(new_sock);
-			if(a[0] != 0)
+			// a[0]--;
+			while(a[0] == 0)
 			{
-				a[0]--;
-				cout << "client new "<<a[0] << "\n";
+				// sleep(3);
+				cout << "here " << a[0] << "\n";
 			}
-			else
-			{
-			}
-			
 		}
 		else
 		{
 			// child process: process command from client
 			close(sock_fd);
-
+			// a[0]--;
+			cout << "new " << a[0] << "\n";
 			valread = read( new_sock , buffer, 1024);
 			string s(buffer);
 
@@ -145,7 +138,7 @@ int main()
 			close(new_sock);
 			a[0]++;
 			cout << "making shm leaving " << a[0] << "\n";
-			break;
+			return 0;
 			// child process
 		}
 	}
