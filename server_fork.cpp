@@ -18,21 +18,11 @@
 #define FILE_WRITE_FAILED "failed to insert to server file"
 #define FILE_WRITE_SUCCESS "successfully written to file"
 #define WRONG_COMMAND "command not recognized"
-#define SERVER_BUSY "server is busy"
 #define MAX_CHILD 2
-
-// semaphore operations
-
-// struct sembuf pop, vop;
-
-// #define P(s) semop(s, &pop, 1);
-// #define V(s) semop(s, &vop, 1);
-
 
 using namespace std;
 
-int Lines = -1;
-
+// share memory for multiprocess operations
 int shmid = shmget(IPC_PRIVATE, sizeof(int), 0777|IPC_CREAT);
 
 string* split(string s,char c, int& count) {
@@ -57,7 +47,7 @@ int main()
 	// initialize shared memory
 	int *a;
 	a = (int*)shmat(shmid, 0, 0);
-	a[0] = 2;
+	a[0] = MAX_CHILD;
 
 	pid_t p;
 
