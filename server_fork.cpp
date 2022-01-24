@@ -15,7 +15,7 @@
 
 // server messages
 #define WRONG_COMMAND "command not recognized"
-#define INVALID_REC "invalid records"
+#define INVALID_BILL "invalid records in bill"
 #define NOT_SORTED_ALONG_FIELD "files aren't sorted along the field axis"
 #define MAX_CHILD 2
 #define MAX_VALID_YR 9999
@@ -76,6 +76,18 @@ bool isValidDate(string date_str)
 	return true;
 }
 
+int compareDate(string d1, string d2)
+{
+	int cont;
+	string* d11 = split(d1, '.', cont);
+	d1 = "";
+	d1 = d11[2] + d11[1] + d11[0];
+	string* d22 = split(d2, '.', cont);
+	d2 = "";
+	d2 = d22[2] + d22[1] + d22[0];
+	return d1.compare(d2);
+}
+
 class record
 {
 public:
@@ -133,25 +145,36 @@ public:
 		s = date + " " + item + " " + to_string(price);
 		return s;
 	}
+
+	bool isSimilar(record& rec)
+	{
+		if(this->date.compare(rec.date) == 0 || this->item.compare(rec.item) == 0 || this->price == rec.price)
+			return true;
+		else
+			return false;
+		
+	}
+
+	int recCompare(record& rec, char by)
+	{
+		if(by == 'D')
+		{
+			return compareDate(this->date, rec.date);
+		}
+		else if(by == 'N')
+		{
+			return this->item.compare(rec.item);
+		}
+		else if(by == 'P')
+		{
+			return ((this->price - rec.price) < 0) ? -1 : (((this->price - rec.price) > 0) ? 1 : 0);
+		}
+	}
 };
-
-// bool isSorted()
-// {
-
-// }
 
 bool recCompareD(record &lhs, record &rhs)
 {
-	int cont;
-	string d1 = lhs.date;
-	string* d11 = split(d1, '.', cont);
-	d1 = "";
-	d1 = d11[2] + d11[1] + d11[0];
-	string d2 = rhs.date;
-	string* d22 = split(d2, '.', cont);
-	d2 = "";
-	d2 = d22[2] + d22[1] + d22[0];
-	return (d1.compare(d2) < 0);
+	return (compareDate(lhs.date, rhs.date) < 0);
 }
 
 bool recCompareN(record &lhs, record &rhs)
@@ -162,6 +185,54 @@ bool recCompareN(record &lhs, record &rhs)
 bool recCompareP(record &lhs, record &rhs)
 {
 	return (lhs.price < rhs.price);
+}
+
+bool isSorted(string filename, char by)
+{
+	bool isSorted = true;
+	ifstream fi(filename);
+	string s1, s2;
+
+	while(!fi.eof())
+	{
+		getline(fi, s1);
+		getline(fi, s2);
+		record rec1(s1);
+		record rec2(s2);
+		if(by == 'D')
+		{
+			isSorted = recCompareD(rec1, rec2);
+		}
+		else if(by == 'N')
+		{
+			isSorted = recCompareN(rec1, rec2);
+		}
+		else if(by == 'P')
+		{
+			isSorted = recCompareP(rec1, rec2);
+		}
+		if(!isSorted)
+			break;
+	}
+	return isSorted;
+}
+
+bool isValidBill(string filename)
+{
+	ifstream fi(filename);
+	string s;
+	bool valid = true;
+	while(!fi.eof())
+	{
+		getline(fi, s);
+		if(!record(s).isRecValid())
+		{
+			valid = false;
+			break;
+		}
+	}
+	fi.close();
+	return valid;
 }
 
 
@@ -181,7 +252,7 @@ string sort_bills(string filename, char by, int count)
 		if(!rec[count].isRecValid())
 		{
 			fi.close();
-			return INVALID_REC;
+			return INVALID_BILL;
 		}
 		count++;
 	}
@@ -206,6 +277,68 @@ string sort_bills(string filename, char by, int count)
 	}
 	fo.close();
 	return filename;
+}
+
+string merge(string filename1, string filename2, char by)
+{
+	if(isValidBill(filename1) && isValidBill(filename2))
+	{
+		string filename = filename1.substr(0, filename1.length() - 4) + "_merge" + ".txt";
+		if(isSorted(filename1, by) && isSorted(filename2, by))
+		{
+			ifstream fi1(filename1), fi2(filename2);
+			ofstream fo(filename);
+			string s;
+			while(!fi1.eof())
+			{
+				getline(fi1, s);
+				fo << s << endl;
+			}
+			while(!fi2.eof())
+			{
+				getline(fi2, s);
+				fo << s << endl;
+			}
+			fi1.close();
+			fi2.close();
+			fo.close();
+			return filename;
+		}
+		else
+			return NOT_SORTED_ALONG_FIELD;
+	}
+	else
+		return INVALID_BILL;
+}
+
+string similarity(string filename1, string filename2)
+{
+	string filename = filename1.substr(0, filename1.length() - 4) + "_sim" + ".txt";
+	if(isValidBill(filename1) && isValidBill(filename2))
+	{
+		ofstream fo(filename);
+		ifstream fi1(filename1), fi2(filename2);
+		string s1, s2;
+		while(!fi1.eof())
+		{
+			getline(fi1, s1);
+			while(!fi2.eof())
+			{
+				getline(fi2, s2);
+				record rec1(s1);
+				record rec2(s2);
+				if(rec1.isSimilar(rec2))
+					fo << s1 + " | " + s2 << endl;
+			}
+			fi2.clear();
+			fi2.seekg(0);
+		}
+		fi1.close();
+		fi2.close();
+		return filename;
+	}
+	else
+		return INVALID_BILL;
 }
 
 
@@ -319,72 +452,70 @@ int main()
 					}
 					// merge
 
-					// else if(str[0].compare("/merge") == 0)
-					// {
-					// 	for(int i = 0; i < count-2; i++)
-					// 	{
-					// 		ofstream of;
-					// 		of.open(str[i+1]);
-					// 		bzero(buffer, 1024);
-					// 		read( new_sock , buffer, 1024);
-					// 		s = buffer;
-					// 		int j = 0;
-					// 		while(s.compare("eof") != 0)
-					// 		{
-					// 			of << s+"\n";
-					// 			bzero(buffer, 1024);
-					// 			read( new_sock , buffer, 1024);
-					// 			s = buffer;
-					// 		}
-					// 		of.close();
-					// 	}
-					// 	filename = merge(str[1], str[2]);
-					// 	if(regex_match(filename, reg))
-					// 		passFile = true;
-					// }
+					else if(str[0].compare("/merge") == 0)
+					{
+						for(int i = 0; i < count-2; i++)
+						{
+							ofstream of;
+							of.open(str[i+1]);
+							bzero(buffer, 1024);
+							read( new_sock , buffer, 1024);
+							s = buffer;
+							while(s.compare("eof") != 0)
+							{
+								of << s+"\n";
+								bzero(buffer, 1024);
+								read( new_sock , buffer, 1024);
+								s = buffer;
+							}
+							of.close();
+						}
+						filename = merge(str[1], str[2], str[count - 1][0]);
+						if(filename.substr(filename.length()-4, filename.length()).compare(".txt"))
+							passFile = true;
+					}
 
 					// similarity check
 					
-					// else if(str[0].compare("/similarity") == 0)
-					// {
-					// 	string filename1 = str[1];
-					// 	string filename2 = str[2];
+					else if(str[0].compare("/similarity") == 0)
+					{
+						string filename1 = str[1];
+						string filename2 = str[2];
 
-					// 	ofstream of1, of2;
-					// 	of1.open(filename1, ios::out);
-					// 	of2.open(filename2, ios::out);
+						ofstream of1, of2;
+						of1.open(filename1, ios::out);
+						of2.open(filename2, ios::out);
 						
-					// 	// read 1st file
+						// read 1st file
 						
-					// 	bzero(buffer, 1024);
-					// 	read( new_sock , buffer, 1024);
-					// 	s = buffer;
-					// 	while(s.compare("eof") != 0)
-					// 	{
-					// 		of1 << s+"\n";
-					// 		bzero(buffer, 1024);
-					// 		read( new_sock , buffer, 1024);
-					// 		s = buffer;
-					// 	}
+						bzero(buffer, 1024);
+						read( new_sock , buffer, 1024);
+						s = buffer;
+						while(s.compare("eof") != 0)
+						{
+							of1 << s+"\n";
+							bzero(buffer, 1024);
+							read( new_sock , buffer, 1024);
+							s = buffer;
+						}
 
-					// 	// read 2nd file
-					// 	bzero(buffer, 1024);
-					// 	read( new_sock , buffer, 1024);
-					// 	s = buffer;
-					// 	while(s.compare("eof") != 0)
-					// 	{
-					// 		of2 << s+"\n";
-					// 		strar2[i++] = s;
-					// 		bzero(buffer, 1024);
-					// 		read( new_sock , buffer, 1024);
-					// 		s = buffer;
-					// 	}
-					// 	of1.close();
-					// 	of2.close();
-					// 	filename = similarity(filename1, filename2, count1, count2);
-					// 	if(regex_match(filename, reg))
-					// 		passFile = true;
-					// }
+						// read 2nd file
+						bzero(buffer, 1024);
+						read( new_sock , buffer, 1024);
+						s = buffer;
+						while(s.compare("eof") != 0)
+						{
+							of2 << s+"\n";
+							bzero(buffer, 1024);
+							read( new_sock , buffer, 1024);
+							s = buffer;
+						}
+						of1.close();
+						of2.close();
+						filename = similarity(filename1, filename2);
+						if(filename.substr(filename.length()-4, filename.length()).compare(".txt"))
+							passFile = true;
+					}
 					if(!passFile)
 					{
 						send(new_sock, filename.c_str(), filename.length(), 0);
