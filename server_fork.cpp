@@ -9,15 +9,13 @@
 #include <sys/sendfile.h>
 #include <string.h>
 #include <iostream>
+#include <regex>
 #define PORT 5000
 
 // server messages
-#define FILE_DOES_NOT_EXIST "server file doesn't exists"
-#define FILE_EMPTY "server file is empty"
-#define FILE_INDX_OUT_RANGE "query line is out of range of server file"
-#define FILE_WRITE_FAILED "failed to insert to server file"
-#define FILE_WRITE_SUCCESS "successfully written to file"
 #define WRONG_COMMAND "command not recognized"
+#define INVALID_REC "invalid records"
+#define NOT_SORTED_ALONG_FIELD "files aren't sorted along the field axis"
 #define MAX_CHILD 2
 
 using namespace std;
@@ -166,27 +164,42 @@ class record
 public:
 	string date, item;
 	double price;
-	bool validity;
+	bool static validity = true;
 
 	record(string s)
 	{
 		int cnt;
-		string* str = split(s, ' ', cnt);
-		date = str[0];
-		item = str[1];
-		validity = true;
-		if(Date(date).isValidDate())
+		regex reg("([0-3][0-9].[0-1][0-2].[1-2][0-9][0-9][0-9] \S* \d*\.?\d*)");
+		if(!regex_match(s, reg))
 		{
 			validity = false;
-		}
-		try
-		{
-			price = stod(str[2]);
-		}
-		catch(Exception)
-		{
+			date = "";
+			item = "";
 			price = -1;
-			validity = false;
+		}
+		else
+		{
+			string* str = split(s, ' ', cnt);
+			date = str[0];
+			item = str[1];
+			if(!Date(date).isValidDate())
+			{
+				validity = false;
+				date = "";
+				price = -1;
+			}
+			else
+			{
+				try
+				{
+					price = stod(str[2]);
+				}
+				catch(Exception)
+				{
+					price = -1;
+					validity = false;
+				}
+			}
 		}
 	}
 
@@ -197,16 +210,23 @@ public:
 		price = rec.price;
 	}
 
-	bool isRecValid()
-	{
+	bool static isRecValid()
+	{	
 		return validity;
+	}
+
+	string giveString()
+	{
+		string s = "";
+		s = date + " " + item + " " + to_string(price);
+		return s;
 	}
 };
 
-bool isSorted()
-{
+// bool isSorted()
+// {
 
-}
+// }
 
 bool recCompareD(record &lhs, record &rhs)
 {
@@ -230,6 +250,45 @@ bool recCompareN(record &lhs, record &rhs)
 bool recCompareP(record &lhs, record &rhs)
 {
 	return (lhs.price < rhs.price);
+}
+
+
+string sort_bills(string filename, char by, int count)
+{
+	ifstream fi;
+	fi.open(filename, ios::in)
+	string s;
+	record rec[count+5];
+	count = 0;
+	while(fi.eof())
+	{
+		getline(fi, s);
+		rec[count] = new record(s);
+		count++;
+	}
+	fi.close();
+	if(!record::isRecValid())
+		return INVALID_REC;
+	if(by == 'D')
+	{
+		sort(rec, rec+count, recCompareD);
+	}
+	else if(by == 'N')
+	{
+		sort(rec, rec+count, recCompareN);
+	}
+	else if(by == 'P')
+	{
+		sort(rec, rec+count, recCompareP);
+	}
+	
+	ofstream fo(filename);
+	for(int i = 0; i < count; i++)
+	{
+		fo << rec[i].giveString() << "\n";
+	}
+	fo.close();
+	return filename;
 }
 
 
@@ -311,8 +370,8 @@ int main()
 
 				valread = read( new_sock , buffer, 1024);
 				string s(buffer);
-
-				
+				regex reg("([\w,\s-]+\.[txt]{3})");
+				bool passFile = false;
 
 				while(valread > 0 && s.compare("/exit") != 0) {
 					int count = 0;
@@ -323,6 +382,7 @@ int main()
 					{
 						filename = str[1];
 						ofstream of;
+						int cont = 0;
 						of.open(filename, ios::out);
 						char by = s[s.length() - 1];
 						bzero(buffer, 1024);
@@ -331,24 +391,15 @@ int main()
 						while(s.compare("eof") != 0)
 						{
 							of << s+"\n";
+							cont++;
 							bzero(buffer, 1024);
 							read( new_sock , buffer, 1024);
 							s = buffer;
 						}
 						of.close();
-						sort_bills(filename, by);
-						// if(by == 'D')
-						// {
-						// 	sort(strar, strar+count, recCompareD);
-						// }
-						// else if(by == 'N')
-						// {
-						// 	sort(strar, strar+count, recCompareN);
-						// }
-						// else if(by == 'P')
-						// {
-						// 	sort(strar, strar+count, recCompareP);
-						// }
+						filename = sort_bills(filename, by, cont);
+						if(filename.substr(filename.length()-4, filename.length()).compare(".txt"))
+							passFile = true;
 					}
 					// merge
 					else if(str[0].compare("/merge") == 0)
@@ -370,7 +421,9 @@ int main()
 							}
 							of.close();
 						}
-						merge(str[1], str[2]);
+						filename = merge(str[1], str[2]);
+						if(regex_match(filename, reg))
+							passFile = true;
 					}
 					// similarity check
 					else if(str[0].compare("/similarity") == 0)
@@ -409,15 +462,13 @@ int main()
 						}
 						of1.close();
 						of2.close();
-						similarity(filename1, filename2, count1, count2);
+						filename = similarity(filename1, filename2, count1, count2);
+						if(regex_match(filename, reg))
+							passFile = true;
 					}
-					if(filename.compare("") == 0)
+					if(!passFile)
 					{
-						int i = 0;
-						while(i < count)
-						{
-							send(new_sock, strFin[i].c_str(), strFin[i++].length(), 0);
-						}
+						send(new_sock, filename.c_str(), filename.length(), 0);
 					}
 					else
 					{
@@ -428,10 +479,10 @@ int main()
 							send(new_sock, strFin[i].c_str(), strFin[i].length(), 0);
 						}
 					}
-					cout << s << "\n";
 					bzero(buffer, 1024);
 					valread = read( new_sock , buffer, 1024);
 					s = buffer;
+					cout << s << "\n";
 				}
 				close(new_sock);
 				a[0]++;

@@ -22,10 +22,14 @@ int main()
 {
     string s;
     getline(cin, s);
-    int count = 0;
-    string* str = split(s, ' ', count);
-    for(int i = 0; i < count; i++)
-    {
-        cout << str[i] << "\n";
-    }
+	if(s.substr(s.length()-4, s.length()).compare(".txt") == 0)
+		cout << "yes\n";
+	else
+		cout << "no\n";
+    // int count = 0;
+    // string* str = split(s, ' ', count);
+    // for(int i = 0; i < count; i++)
+    // {
+    //     cout << str[i] << "\n";
+    // }
 }
