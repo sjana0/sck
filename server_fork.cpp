@@ -84,9 +84,11 @@ string rcv_file(int sock, int& count)
 	filename = "server_" + filename;
 	ofstream fo(filename);
 	
+	// send ack on recieving filename
 	s = "acknowledged";
-	
 	write(sock, s.c_str(), s.length());
+	
+	// reads the first line of the file
 	bzero(buffer, 1024);
 	read(sock, buffer, 1024);
 	
@@ -96,11 +98,15 @@ string rcv_file(int sock, int& count)
 	while(s.compare("eof") != 0)
 	{
 		s1 = s;
+
+		// first line ack
 		s = "acknowledged";
 		write(sock, s.c_str(), s.length());
+		
 		bzero(buffer, 1024);
 		read(sock, buffer, 1024);
 		s = buffer;
+		
 		cout << "line: " << s1 << "\n";
 		count++;
 		if(s.compare("eof") == 0)
@@ -553,6 +559,7 @@ int main()
 					if(str[0].compare("/sort") == 0)
 					{
 						char by = str[2][0];
+						cout << s << "\n" << by << "\n";
 						int cont = 0;
 						filename = rcv_file(new_sock, cont);
 						filename = sort_bills(filename, by, cont);

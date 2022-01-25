@@ -25,24 +25,33 @@ void send_file(string filename, int sock)
 	cout << "inside send function1\n";
 	char buffer[1024];
 	string s;
+
+	// wirte filename to server
 	ifstream fi(filename);
 	write(sock, filename.c_str(), filename.length());
+	
 	cout << "inside send function2\n";
 	while(!fi.eof())
 	{
+		// it reads first ack for filename from server
 		bzero(buffer, 1024);
 		read(sock, buffer, 1024);
 		s = buffer;
 		cout << "1: " << s << "\n";
+		
 		if(s.compare("acknowledged") == 0)
 		{
 			// cout << "inside send function3\n" << s << "\n";
+			// reads first line from file and sends
 			getline(fi, s);
 			cout << "2: " << s << "\n";
 			write(sock, s.c_str(), s.length());
 			cout << "3: " << s << "\n";
 		}
 	}
+	bzero(buffer, 1024);
+	read(sock, buffer, 1024);
+	s = buffer;
 	if(s.compare("acknowledged") == 0)
 	{
 		s = "eof";
@@ -59,14 +68,19 @@ string rcv_file(int sock)
 	cout << "recieve file\n";
 	char buffer[1024];
 	string s;
+	
 	bzero(buffer, 1024);
 	read(sock, buffer, 1024);
 	string filename = buffer;
+	
 	ofstream fo(filename);
+	
 	s = "acknowledged";
 	write(sock, s.c_str(), s.length());
+	
 	bzero(buffer, 1024);
 	read(sock, buffer, 1024);
+	
 	s = buffer;
 	string s1;
 	while(s.compare("eof") != 0)
@@ -141,6 +155,7 @@ int main()
 			// cout << "boooyay\n" << s;
 			// break;
 			n = write(sock_fd, s.c_str(), s.length());
+			
 			if(s.rfind("/sort", 0) == 0)
 			{
 				cout << "sorting\n";
@@ -163,8 +178,11 @@ int main()
 					rcv_file(sock_fd);
 				}
 				else
+				{
 					cout << s << "\n";
+				}
 			}
+
 			if(s.rfind("/merge", 0) == 0)
 			{
 				int count;
