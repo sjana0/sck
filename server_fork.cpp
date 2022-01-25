@@ -14,9 +14,9 @@
 #define PORT 5000
 
 // server messages
-#define WRONG_COMMAND "ERROR: command not recognized"
-#define INVALID_BILL "ERROR: invalid records in bill"
-#define NOT_SORTED_ALONG_FIELD "ERROR: files aren't sorted along the field axis"
+#define WRONG_COMMAND "ERROR: command not recognized\n"
+#define INVALID_BILL "ERROR: invalid records in bill\n"
+#define NOT_SORTED_ALONG_FIELD "ERROR: files aren't sorted along the field axis\n"
 #define MAX_CHILD 2
 #define MAX_VALID_YR 9999
 #define MIN_VALID_YR 1800
@@ -27,6 +27,87 @@ int Lines = -1;
 
 // share memory operation
 int shmid = shmget(IPC_PRIVATE, sizeof(int), 0777|IPC_CREAT);
+
+/***
+send file will have the file name that have to be sent
+the name of the file in server side that has to be sent
+and finally the sock file descriptor
+***/
+
+void send_file(string filename, string filenameSend, int sock)
+{
+	char buffer[1024];
+	string s;
+	ifstream fi(filename);
+	write(sock, filenameSend.c_str(), filenameSend.length());
+	while(!fi.eof())
+	{
+		bzero(buffer, 1024);
+		read(sock, buffer, 1024);
+		s = buffer;
+		if(s.compare("acknowledged") == 0)
+		{
+			getline(fi, s);
+			write(sock, s.c_str(), s.length());
+			bzero(buffer, 1024);
+			read(sock, buffer, 1024);
+			s = buffer;
+		}
+	}
+	if(s.compare("acknowledged") == 0)
+	{
+		s = "eof";
+		write(sock, s.c_str(), s.length());
+	}
+}
+
+/***
+recieve file will have
+as filename already have been recieved so filename
+count as to count the number lines in the file
+and finally the sock fd
+***/
+
+string rcv_file(int sock, int& count)
+{
+	char buffer[1024];
+	string s;
+	string filename;
+	count = 0;
+	bzero(buffer, 1024);
+	read(sock, buffer, 1024);
+	filename = buffer;
+	filename = "server_" + filename;
+	ofstream fo(filename);
+	s = "acknowledged";
+	write(sock, s.c_str(), s.length());
+	bzero(buffer, 1024);
+	read(sock, buffer, 1024);
+	s = buffer;
+	string s1;
+
+	while(s.compare("eof") != 0)
+	{
+		s1 = s;
+	cout << "here0\n" << s << "\n";
+		s = "acknowledged";
+		write(sock, s.c_str(), s.length());
+		bzero(buffer, 1024);
+		read(sock, buffer, 1024);
+		cout << "here 1\n";
+		s = buffer;
+		cout << "here 2\n";
+		count++;
+		// cout << s << "\n";
+		cout << s1 << "\n";
+		if(s.compare("eof") == 0)
+			fo << s1;
+		else
+			fo << s1 << endl;
+	}
+	fo.close();
+	return filename;
+}
 
 string* split(string s,char c, int& count) {
 	for(unsigned int p = 0; p < s.length(); p++) {
@@ -50,6 +131,7 @@ string* split(string s,char c, int& count) {
     count++;
 	return strar;
 }
+
 bool isLeap(int year)
 {
 	return (((year % 4 == 0) &&
@@ -108,22 +190,26 @@ public:
 	record(string s)
 	{
 		int cnt;
-		cout << "in regex match\n";
+		validity = true;
+		cout << "record inside class: " << s << "\n";
 		regex reg("([0-3][0-9]\\.[0-1][0-2]\\.[1-2][0-9][0-9][0-9] \\S* \\d*\\.?\\d*)");
-		if(!regex_match(s, reg))
-		{
-			validity = false;
-			date = "";
-			item = "";
-			price = -1;
-		}
-		else
-		{
+		// if(!regex_match(s, reg))
+		// {
+		//	cout << "in regex match\n";
+		// 	cout << "here invalidated1\n";
+		// 	validity = false;
+		// 	date = "";
+		// 	item = "";
+		// 	price = -1;
+		// }
+		// else
+		// {
 			string* str = split(s, ' ', cnt);
 			date = str[0];
 			item = str[1];
 			if(cnt != 3)
 			{
+				cout << "here invalidated2\n";
 				validity = false;
 				date = "";
 				item = "";
@@ -131,26 +217,28 @@ public:
 			}
 			else if(!isValidDate(date))
 			{
+				cout << "here invalidated3\n";
 				validity = false;
 				date = "";
 				price = -1;
 			}
 			else
 			{
-				cout << "boyaay\n";
 				try
 				{
 					date = str[0];
 					item = str[1];
 					price = stod(str[2]);
+					cout << "ok\n";
 				}
 				catch(int x)
 				{
+					cout << "here invalidated4\n";
 					price = -1;
 					validity = false;
 				}
 			}
-		}
+		// }
 	}
 
 	bool isRecValid()
@@ -264,6 +352,7 @@ string sort_bills(string filename, char by, int count)
 	record rec[count+5];
 	cout << "sort print " << by << "\n";
 	count = 0;
+	// return "ERROR:";
 	while(!fi.eof())
 	{
 		getline(fi, s);
@@ -275,9 +364,10 @@ string sort_bills(string filename, char by, int count)
 			return INVALID_BILL;
 		}
 		count++;
+		cout << "inside sortbills function: " << s;
 	}
 	fi.close();
-	return "";
+	// return "ERROR:";
 	if(by == 'D')
 	{
 		sort(rec, rec+count, recCompareD);
@@ -294,7 +384,10 @@ string sort_bills(string filename, char by, int count)
 	ofstream fo(filename);
 	for(int i = 0; i < count; i++)
 	{
-		fo << rec[i].giveString() << "\n";
+		if(i != count-1)
+			fo << rec[i].giveString() << "\n";
+		else
+			fo << rec[i].giveString();
 	}
 	fo.close();
 	return filename;
@@ -447,32 +540,15 @@ int main()
 					int count = 0;
 					string* str = split(s, ' ', count);
 					string filename = "";
-					string filenameSend = "";
+					string filenameSend = str[1];
 					// sorting
 					if(str[0].compare("/sort") == 0)
 					{
-						filename = str[1];
-						ofstream of("server_" + filename);
+						char by = str[2][0];
 						int cont = 0;
-						cout << "open files:" << s << "\n";
-						char by = s[s.length() - 1];
-						cout << by << "\n";
-						bzero(buffer, 1024);
-						read( new_sock , buffer, 1024);
-						s = buffer;
-						while(s.compare("eof") != 0)
-						{
-							cout << s << "\n";
-							of << s << endl;
-							cont++;
-							bzero(buffer, 1024);
-							read( new_sock , buffer, 1024);
-							s = buffer;
-						}
-						of.close();
-						filenameSend = filename;
-						filename = sort_bills("server_" + filename, by, cont);
-						if(filename.substr(filename.length()-4, filename.length()).compare(".txt"))
+						filename = rcv_file(new_sock, cont);
+						filename = sort_bills(filename, by, cont);
+						if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
 							passFile = true;
 					}
 					// merge
@@ -497,7 +573,7 @@ int main()
 						}
 						filenameSend = str[1];
 						filename = merge("server_" + str[1], "server_" + str[2], str[count - 1][0]);
-						if(filename.substr(filename.length()-4, filename.length()).compare(".txt"))
+						if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
 							passFile = true;
 					}
 
@@ -539,7 +615,7 @@ int main()
 						of1.close();
 						of2.close();
 						filename = similarity("server_" + filename1, "server_" + filename2);
-						if(filename.substr(filename.length()-4, filename.length()).compare(".txt"))
+						if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
 							passFile = true;
 					}
 					if(!passFile)
@@ -548,17 +624,10 @@ int main()
 					}
 					else
 					{
-						send(new_sock, filenameSend.c_str(), filenameSend.length(), 0);
-						int i = 0;
-						ifstream fi(filename);
-						while(!fi.eof())
-						{
-							s = "";
-							getline(fi, s);
-							send(new_sock, s.c_str(), s.length(), 0);
-						}
-						s = "eof";
+						cout << "outside passfile: "<<filename <<"\n";
+						s = "Successful command\n";
 						send(new_sock, s.c_str(), s.length(), 0);
+						send_file(filename, filenameSend, new_sock);
 					}
 					bzero(buffer, 1024);
 					valread = read( new_sock , buffer, 1024);

@@ -14,6 +14,78 @@
 
 using namespace std;
 
+/***
+only sends the content of the file
+so has filename
+and sock
+***/
+
+void send_file(string filename, int sock)
+{
+	cout << "inside send function1\n";
+	char buffer[1024];
+	string s;
+	ifstream fi(filename);
+	write(sock, filename.c_str(), filename.length());
+	cout << "inside send function2\n";
+	while(!fi.eof())
+	{
+		bzero(buffer, 1024);
+		read(sock, buffer, 1024);
+		s = buffer;
+		if(s.compare("acknowledged") == 0)
+		{
+			cout << "inside send function3\n" << s << "\n";
+			getline(fi, s);
+			write(sock, s.c_str(), s.length());
+			cout << s << "\n";
+			bzero(buffer, 1024);
+			read(sock, buffer, 1024);
+			s = buffer;
+		}
+	}
+	if(s.compare("acknowledged") == 0)
+	{
+		s = "eof";
+		write(sock, s.c_str(), s.length());
+	}
+}
+
+/***
+filename send from server and sock
+***/
+
+string rcv_file(int sock)
+{
+	cout << "recieve file\n";
+	char buffer[1024];
+	string s;
+	bzero(buffer, 1024);
+	read(sock, buffer, 1024);
+	string filename = buffer;
+	ofstream fo(filename);
+	s = "acknowledged";
+	write(sock, s.c_str(), s.length());
+	bzero(buffer, 1024);
+	read(sock, buffer, 1024);
+	s = buffer;
+	string s1;
+	while(s.compare("eof") != 0)
+	{
+		s1 = s;
+		s = "acknowledged";
+		write(sock, s.c_str(), s.length());
+		bzero(buffer, 1024);
+		read(sock, buffer, 1024);
+		s = buffer;
+		if(s.compare("eof") == 0)
+			fo << s1;
+		else
+			fo << s1 << endl;
+	}
+	return filename;
+}
+
 string* split(string s,char c, int& count) {
 	string static strar[1000];
 	count = 0;
@@ -67,10 +139,9 @@ int main()
 	{
 		if(regex_match(s, m, reg))
 		{
-			// cout << "boooyay\n" << m[0];
+			// cout << "boooyay\n" << s;
 			// break;
 			n = write(sock_fd, s.c_str(), s.length());
-			bzero(buffer, 1024);
 			if(s.rfind("/sort", 0) == 0)
 			{
 				cout << "sorting\n";
@@ -81,35 +152,16 @@ int main()
 					cout << WRONG_COMMAND << endl;
 					continue;
 				}
-				ifstream fi(str[1]);
-				char by = str[2][0];
-				while(!fi.eof())
-				{
-					s = "";
-					getline(fi, s);
-					write(sock_fd, s.c_str(), s.length());
-					sleep(1);
-				}
-				s = "eof";
-				fi.close();
-				write(sock_fd, s.c_str(), s.length());
+				send_file(str[1], sock_fd);
 				bzero(buffer, 1024);
 				n = read(sock_fd,buffer,1024);
 				s = buffer;
+				cout << s <<" recieve file\n";
 				if(s.rfind("ERROR", 0) != 0)
 				{
-					ofstream fo(s);
-					bzero(buffer, 1024);
-					n = read(sock_fd,buffer,1024);
-					s = buffer;
-					while(s.compare("eof") != 0)
-					{
-						fo << s << endl;
-						bzero(buffer, 1024);
-						n = read(sock_fd,buffer,1024);
-						s = buffer;
-					}
-					fo.close();
+					cout << s << "\n";
+					// break;
+					rcv_file(sock_fd);
 				}
 				else
 					cout << s << "\n";
