@@ -80,8 +80,8 @@ string rcv_file(int sock)
 	
 	bzero(buffer, 1024);
 	read(sock, buffer, 1024);
-	
 	s = buffer;
+	
 	string s1;
 	while(s.compare("eof") != 0)
 	{
@@ -91,6 +91,7 @@ string rcv_file(int sock)
 		bzero(buffer, 1024);
 		read(sock, buffer, 1024);
 		s = buffer;
+		cout << s1 << "\n";
 		if(s.compare("eof") == 0)
 			fo << s1;
 		else
@@ -170,7 +171,6 @@ int main()
 				bzero(buffer, 1024);
 				n = read(sock_fd,buffer,1024);
 				s = buffer;
-				cout << s <<" recieve file\n";
 				if(s.rfind("ERROR", 0) != 0)
 				{
 					cout << s << "\n";

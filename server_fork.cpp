@@ -50,11 +50,12 @@ void send_file(string filename, string filenameSend, int sock)
 		{
 			getline(fi, s);
 			write(sock, s.c_str(), s.length());
-			bzero(buffer, 1024);
-			read(sock, buffer, 1024);
-			s = buffer;
 		}
 	}
+
+	bzero(buffer, 1024);
+	read(sock, buffer, 1024);
+	s = buffer;
 	
 	if(s.compare("acknowledged") == 0)
 	{
