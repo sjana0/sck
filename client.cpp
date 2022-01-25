@@ -85,8 +85,10 @@ int main()
 				char by = str[2][0];
 				while(!fi.eof())
 				{
+					s = "";
 					getline(fi, s);
 					write(sock_fd, s.c_str(), s.length());
+					sleep(1);
 				}
 				s = "eof";
 				fi.close();
@@ -94,18 +96,23 @@ int main()
 				bzero(buffer, 1024);
 				n = read(sock_fd,buffer,1024);
 				s = buffer;
-				ofstream fo(s);
-				bzero(buffer, 1024);
-				n = read(sock_fd,buffer,1024);
-				s = buffer;
-				while(s.compare("eof") != 0)
+				if(s.rfind("ERROR", 0) != 0)
 				{
-					fo << s << endl;
+					ofstream fo(s);
 					bzero(buffer, 1024);
 					n = read(sock_fd,buffer,1024);
 					s = buffer;
+					while(s.compare("eof") != 0)
+					{
+						fo << s << endl;
+						bzero(buffer, 1024);
+						n = read(sock_fd,buffer,1024);
+						s = buffer;
+					}
+					fo.close();
 				}
-				fo.close();
+				else
+					cout << s << "\n";
 			}
 			if(s.rfind("/merge", 0) == 0)
 			{
@@ -136,18 +143,23 @@ int main()
 				bzero(buffer, 1024);
 				n = read(sock_fd,buffer,1024);
 				s = buffer;
-				ofstream fo(s);
-				bzero(buffer, 1024);
-				n = read(sock_fd,buffer,1024);
-				s = buffer;
-				while(s.compare("eof") != 0)
+				if(s.rfind("ERROR", 0) != 0)
 				{
-					fo << s << endl;
+					ofstream fo(s);
 					bzero(buffer, 1024);
 					n = read(sock_fd,buffer,1024);
 					s = buffer;
+					while(s.compare("eof") != 0)
+					{
+						fo << s << endl;
+						bzero(buffer, 1024);
+						n = read(sock_fd,buffer,1024);
+						s = buffer;
+					}
+					fo.close();
 				}
-				fo.close();
+				else
+					cout << s << "\n";
 			}
 			if(s.rfind("/similarity", 0) == 0)
 			{
@@ -177,13 +189,18 @@ int main()
 				bzero(buffer, 1024);
 				n = read(sock_fd,buffer,1024);
 				s = buffer;
-				while(s.compare("eof"))
+				if(s.rfind("ERROR", 0) != 0)
 				{
-					cout << s << endl;
-					bzero(buffer, 1024);
-					n = read(sock_fd,buffer,1024);
-					s = buffer;
+					while(s.compare("eof"))
+					{
+						cout << s << endl;
+						bzero(buffer, 1024);
+						n = read(sock_fd,buffer,1024);
+						s = buffer;
+					}
 				}
+				else
+					cout << s << "\n";
 			}
 			getline(cin, s);
 			// cout << s << "\n";

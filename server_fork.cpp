@@ -14,9 +14,9 @@
 #define PORT 5000
 
 // server messages
-#define WRONG_COMMAND "command not recognized"
-#define INVALID_BILL "invalid records in bill"
-#define NOT_SORTED_ALONG_FIELD "files aren't sorted along the field axis"
+#define WRONG_COMMAND "ERROR: command not recognized"
+#define INVALID_BILL "ERROR: invalid records in bill"
+#define NOT_SORTED_ALONG_FIELD "ERROR: files aren't sorted along the field axis"
 #define MAX_CHILD 2
 #define MAX_VALID_YR 9999
 #define MIN_VALID_YR 1800
@@ -29,7 +29,14 @@ int Lines = -1;
 int shmid = shmget(IPC_PRIVATE, sizeof(int), 0777|IPC_CREAT);
 
 string* split(string s,char c, int& count) {
-	string static strar[1000];
+	for(unsigned int p = 0; p < s.length(); p++) {
+		if(s[p] == c) {
+			count++;
+		}
+	}
+
+	count++;
+	string* strar = new string[count];
 	count = 0;
 	int i = 0, j = 0;
 	for(unsigned int p = 0; p < s.length(); p++) {
@@ -52,6 +59,7 @@ bool isLeap(int year)
 
 bool isValidDate(string date_str)
 {
+	// cout << "error here\n" << date_str << "\n";
 	int year = stoi(date_str.substr(date_str.length()-4, date_str.length()));
 	int month = stoi(date_str.substr(3, 5));
 	int day = stoi(date_str.substr(0,2));
@@ -100,6 +108,7 @@ public:
 	record(string s)
 	{
 		int cnt;
+		cout << "in regex match\n";
 		regex reg("([0-3][0-9]\\.[0-1][0-2]\\.[1-2][0-9][0-9][0-9] \\S* \\d*\\.?\\d*)");
 		if(!regex_match(s, reg))
 		{
@@ -111,6 +120,8 @@ public:
 		else
 		{
 			string* str = split(s, ' ', cnt);
+			date = str[0];
+			item = str[1];
 			if(cnt != 3)
 			{
 				validity = false;
@@ -126,6 +137,7 @@ public:
 			}
 			else
 			{
+				cout << "boyaay\n";
 				try
 				{
 					date = str[0];
@@ -245,16 +257,17 @@ bool isValidBill(string filename)
 
 string sort_bills(string filename, char by, int count)
 {
-	// necessory line for checking validity of records and further the bill
 
 	ifstream fi;
 	fi.open(filename, ios::in);
 	string s;
 	record rec[count+5];
+	cout << "sort print " << by << "\n";
 	count = 0;
-	while(fi.eof())
+	while(!fi.eof())
 	{
 		getline(fi, s);
+		cout << s << "\n";
 		rec[count] = record(s);
 		if(!rec[count].isRecValid())
 		{
@@ -264,6 +277,7 @@ string sort_bills(string filename, char by, int count)
 		count++;
 	}
 	fi.close();
+	return "";
 	if(by == 'D')
 	{
 		sort(rec, rec+count, recCompareD);
@@ -437,18 +451,19 @@ int main()
 					// sorting
 					if(str[0].compare("/sort") == 0)
 					{
-						cout << "here sorting\n";
 						filename = str[1];
-						ofstream of;
+						ofstream of("server_" + filename);
 						int cont = 0;
-						of.open(filename, ios::out);
+						cout << "open files:" << s << "\n";
 						char by = s[s.length() - 1];
+						cout << by << "\n";
 						bzero(buffer, 1024);
 						read( new_sock , buffer, 1024);
 						s = buffer;
 						while(s.compare("eof") != 0)
 						{
-							of << s+"\n";
+							cout << s << "\n";
+							of << s << endl;
 							cont++;
 							bzero(buffer, 1024);
 							read( new_sock , buffer, 1024);
@@ -456,7 +471,7 @@ int main()
 						}
 						of.close();
 						filenameSend = filename;
-						filename = sort_bills(filename, by, cont);
+						filename = sort_bills("server_" + filename, by, cont);
 						if(filename.substr(filename.length()-4, filename.length()).compare(".txt"))
 							passFile = true;
 					}
@@ -481,7 +496,7 @@ int main()
 							of.close();
 						}
 						filenameSend = str[1];
-						filename = merge(str[1], str[2], str[count - 1][0]);
+						filename = merge("server_" + str[1], "server_" + str[2], str[count - 1][0]);
 						if(filename.substr(filename.length()-4, filename.length()).compare(".txt"))
 							passFile = true;
 					}
@@ -494,8 +509,8 @@ int main()
 						string filename2 = str[2];
 
 						ofstream of1, of2;
-						of1.open(filename1, ios::out);
-						of2.open(filename2, ios::out);
+						of1.open("server_" + filename1, ios::out);
+						of2.open("server_" + filename2, ios::out);
 						
 						// read 1st file
 						
@@ -523,7 +538,7 @@ int main()
 						}
 						of1.close();
 						of2.close();
-						filename = similarity(filename1, filename2);
+						filename = similarity("server_" + filename1, "server_" + filename2);
 						if(filename.substr(filename.length()-4, filename.length()).compare(".txt"))
 							passFile = true;
 					}
@@ -533,7 +548,7 @@ int main()
 					}
 					else
 					{
-						send(new_sock, filenameSend.c_str(), filename.length(), 0);
+						send(new_sock, filenameSend.c_str(), filenameSend.length(), 0);
 						int i = 0;
 						ifstream fi(filename);
 						while(!fi.eof())
