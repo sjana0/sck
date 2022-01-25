@@ -40,6 +40,7 @@ void send_file(string filename, string filenameSend, int sock)
 	string s;
 	ifstream fi(filename);
 	write(sock, filenameSend.c_str(), filenameSend.length());
+	
 	while(!fi.eof())
 	{
 		bzero(buffer, 1024);
@@ -54,6 +55,7 @@ void send_file(string filename, string filenameSend, int sock)
 			s = buffer;
 		}
 	}
+	
 	if(s.compare("acknowledged") == 0)
 	{
 		s = "eof";
@@ -74,36 +76,42 @@ string rcv_file(int sock, int& count)
 	string s;
 	string filename;
 	count = 0;
+
 	bzero(buffer, 1024);
 	read(sock, buffer, 1024);
+	
 	filename = buffer;
 	filename = "server_" + filename;
 	ofstream fo(filename);
+	
 	s = "acknowledged";
+	
 	write(sock, s.c_str(), s.length());
 	bzero(buffer, 1024);
 	read(sock, buffer, 1024);
+	
 	s = buffer;
 	string s1;
 
 	while(s.compare("eof") != 0)
 	{
 		s1 = s;
-	cout << "here0\n" << s << "\n";
 		s = "acknowledged";
 		write(sock, s.c_str(), s.length());
 		bzero(buffer, 1024);
 		read(sock, buffer, 1024);
-		cout << "here 1\n";
 		s = buffer;
-		cout << "here 2\n";
+		cout << "line: " << s1 << "\n";
 		count++;
-		// cout << s << "\n";
-		cout << s1 << "\n";
 		if(s.compare("eof") == 0)
+		{
 			fo << s1;
+			cout << "eof\n";
+		}
 		else
+		{
 			fo << s1 << endl;
+		}
 	}
 	fo.close();
 	return filename;

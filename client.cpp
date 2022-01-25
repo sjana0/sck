@@ -33,15 +33,14 @@ void send_file(string filename, int sock)
 		bzero(buffer, 1024);
 		read(sock, buffer, 1024);
 		s = buffer;
+		cout << "1: " << s << "\n";
 		if(s.compare("acknowledged") == 0)
 		{
-			cout << "inside send function3\n" << s << "\n";
+			// cout << "inside send function3\n" << s << "\n";
 			getline(fi, s);
+			cout << "2: " << s << "\n";
 			write(sock, s.c_str(), s.length());
-			cout << s << "\n";
-			bzero(buffer, 1024);
-			read(sock, buffer, 1024);
-			s = buffer;
+			cout << "3: " << s << "\n";
 		}
 	}
 	if(s.compare("acknowledged") == 0)
