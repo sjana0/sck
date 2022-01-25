@@ -100,7 +100,7 @@ public:
 	record(string s)
 	{
 		int cnt;
-		regex reg("([0-3][0-9].[0-1][0-2].[1-2][0-9][0-9][0-9] \S* \d*\.?\d*)");
+		regex reg("([0-3][0-9]\\.[0-1][0-2]\\.[1-2][0-9][0-9][0-9] \\S* \\d*\\.?\\d*)");
 		if(!regex_match(s, reg))
 		{
 			validity = false;
@@ -111,9 +111,14 @@ public:
 		else
 		{
 			string* str = split(s, ' ', cnt);
-			date = str[0];
-			item = str[1];
-			if(!isValidDate(date))
+			if(cnt != 3)
+			{
+				validity = false;
+				date = "";
+				item = "";
+				price = -1;
+			}
+			else if(!isValidDate(date))
 			{
 				validity = false;
 				date = "";
@@ -123,6 +128,8 @@ public:
 			{
 				try
 				{
+					date = str[0];
+					item = str[1];
 					price = stod(str[2]);
 				}
 				catch(int x)
@@ -426,9 +433,11 @@ int main()
 					int count = 0;
 					string* str = split(s, ' ', count);
 					string filename = "";
+					string filenameSend = "";
 					// sorting
 					if(str[0].compare("/sort") == 0)
 					{
+						cout << "here sorting\n";
 						filename = str[1];
 						ofstream of;
 						int cont = 0;
@@ -446,6 +455,7 @@ int main()
 							s = buffer;
 						}
 						of.close();
+						filenameSend = filename;
 						filename = sort_bills(filename, by, cont);
 						if(filename.substr(filename.length()-4, filename.length()).compare(".txt"))
 							passFile = true;
@@ -470,6 +480,7 @@ int main()
 							}
 							of.close();
 						}
+						filenameSend = str[1];
 						filename = merge(str[1], str[2], str[count - 1][0]);
 						if(filename.substr(filename.length()-4, filename.length()).compare(".txt"))
 							passFile = true;
@@ -522,12 +533,17 @@ int main()
 					}
 					else
 					{
-						send(new_sock, filename.c_str(), filename.length(), 0);
+						send(new_sock, filenameSend.c_str(), filename.length(), 0);
 						int i = 0;
-						while(i < count)
+						ifstream fi(filename);
+						while(!fi.eof())
 						{
-							// send(new_sock, strFin[i].c_str(), strFin[i].length(), 0);
+							s = "";
+							getline(fi, s);
+							send(new_sock, s.c_str(), s.length(), 0);
 						}
+						s = "eof";
+						send(new_sock, s.c_str(), s.length(), 0);
 					}
 					bzero(buffer, 1024);
 					valread = read( new_sock , buffer, 1024);
