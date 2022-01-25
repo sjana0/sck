@@ -442,7 +442,7 @@ string merge(string filename1, string filename2, char by)
 
 string similarity(string filename1, string filename2)
 {
-	string filename = filename1.substr(0, filename1.length() - 4) + "_sim" + ".txt";
+	string filename = filename1.substr(0, filename1.length() - 4) + "_sim_" + filename2;
 	if(isValidBill(filename1) && isValidBill(filename2))
 	{
 		ofstream fo(filename);
@@ -599,37 +599,12 @@ int main()
 					{
 						string filename1 = str[1];
 						string filename2 = str[2];
+						int cont = 0;
 
-						ofstream of1, of2;
-						of1.open("server_" + filename1, ios::out);
-						of2.open("server_" + filename2, ios::out);
-						
-						// read 1st file
-						
-						bzero(buffer, 1024);
-						read( new_sock , buffer, 1024);
-						s = buffer;
-						while(s.compare("eof") != 0)
-						{
-							of1 << s+"\n";
-							bzero(buffer, 1024);
-							read( new_sock , buffer, 1024);
-							s = buffer;
-						}
-
-						// read 2nd file
-						bzero(buffer, 1024);
-						read( new_sock , buffer, 1024);
-						s = buffer;
-						while(s.compare("eof") != 0)
-						{
-							of2 << s+"\n";
-							bzero(buffer, 1024);
-							read( new_sock , buffer, 1024);
-							s = buffer;
-						}
-						of1.close();
-						of2.close();
+						filenameSend = filename1.substr(0, filename1.length() - 4) + "_sim_" + filename2;
+						cout << "filename1: " << filename1 << "filename2: " << filename2 << "filenameSend: " << filenameSend << "\n";
+						rcv_file(new_sock, cont);
+						rcv_file(new_sock, cont);
 						filename = similarity("server_" + filename1, "server_" + filename2);
 						if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
 							passFile = true;

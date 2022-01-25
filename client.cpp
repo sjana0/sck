@@ -239,34 +239,18 @@ int main()
 					cout << WRONG_COMMAND << endl;
 					continue;
 				}
-				ifstream fi1(str[1]), fi2(str[2]);
-				while(!fi1.eof())
-				{
-					getline(fi1, s);
-					write(sock_fd, s.c_str(), s.length());
-				}
-				s = "eof";
-				write(sock_fd, s.c_str(), s.length());
-				while(!fi2.eof())
-				{
-					getline(fi2, s);
-					write(sock_fd, s.c_str(), s.length());
-				}
-				s = "eof";
-				write(sock_fd, s.c_str(), s.length());
-				fi1.close();fi2.close();
+				
+				send_file(str[1], sock_fd);
+				send_file(str[2], sock_fd);
+
 				bzero(buffer, 1024);
 				n = read(sock_fd,buffer,1024);
 				s = buffer;
+				
 				if(s.rfind("ERROR", 0) != 0)
 				{
-					while(s.compare("eof"))
-					{
-						cout << s << endl;
-						bzero(buffer, 1024);
-						n = read(sock_fd,buffer,1024);
-						s = buffer;
-					}
+					cout << s << endl;
+					// rcv_file(sock_fd);
 				}
 				else
 					cout << s << "\n";
