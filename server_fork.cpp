@@ -387,7 +387,7 @@ string sort_bills(string filename, char by, int count)
 	fi.open(filename, ios::in);
 	string s;
 	record rec[count+5];
-	cout << "sort print " << by << "\n";
+	cout << "sort print " << filename << " by " << by << "\n";
 	count = 0;
 	// return "ERROR:";
 	while(!fi.eof())
@@ -401,13 +401,14 @@ string sort_bills(string filename, char by, int count)
 			return INVALID_BILL;
 		}
 		count++;
-		cout << "inside sortbills function: " << s;
+		cout << "inside sortbills function: " << s << "\n";
 	}
 	fi.close();
 	// return "ERROR:";
 	if(by == 'D')
 	{
 		sort(rec, rec+count, recCompareD);
+		cout << "reached here-1: " << filename << "\n";
 	}
 	else if(by == 'N')
 	{
@@ -426,41 +427,11 @@ string sort_bills(string filename, char by, int count)
 		else
 			fo << rec[i].giveString();
 	}
+	cout << "reached here0: " << filename << "\n";
 	fo.close();
+	cout << "reached here1: " << filename << "\n";
 	return filename;
 }
-
-// string merge(string filename1, string filename2, char by)
-// {
-// 	if(isValidBill(filename1) && isValidBill(filename2))
-// 	{
-// 		string filename = filename1.substr(0, filename1.length() - 4) + "_merge" + ".txt";
-// 		if(isSorted(filename1, by) && isSorted(filename2, by))
-// 		{
-// 			ifstream fi1(filename1), fi2(filename2);
-// 			ofstream fo(filename);
-// 			string s;
-// 			while(!fi1.eof())
-// 			{
-// 				getline(fi1, s);
-// 				fo << s << endl;
-// 			}
-// 			while(!fi2.eof())
-// 			{
-// 				getline(fi2, s);
-// 				fo << s << endl;
-// 			}
-// 			fi1.close();
-// 			fi2.close();
-// 			fo.close();
-// 			return filename;
-// 		}
-// 		else
-// 			return NOT_SORTED_ALONG_FIELD;
-// 	}
-// 	else
-// 		return INVALID_BILL;
-// }
 
 string merge(string* filenameAr, int n, char by)
 {
@@ -496,7 +467,10 @@ string merge(string* filenameAr, int n, char by)
 	fo.close();
 	remove_empty_line(filename);
 	int cnt;
+	cout << "reached hear2: "<< filename << "\n";
+	sleep(2);
 	sort_bills(filename, by, cnt);
+	cout << "reached hear3: "<< filename << "\n";
 	return filename;
 }
 
@@ -618,6 +592,7 @@ int main()
 					string* str = split(s, ' ', count);
 					string filename = "";
 					string filenameSend = str[1];
+					cout << "command: " << s << "\n";
 					// sorting
 					if(str[0].compare("/sort") == 0)
 					{
@@ -639,7 +614,7 @@ int main()
 							int cont = 0;
 							filenameAr[i] = rcv_file(new_sock, cont);
 						}
-						filenameSend = str[1];
+						// filenameSend = str[1];
 						filename = merge(filenameAr, count-2, str[count - 1][0]);
 						if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
 							passFile = true;
@@ -672,6 +647,7 @@ int main()
 						send(new_sock, s.c_str(), s.length(), 0);
 						send_file(filename, filenameSend, new_sock);
 					}
+					break;
 					bzero(buffer, 1024);
 					valread = read( new_sock , buffer, 1024);
 					s = buffer;

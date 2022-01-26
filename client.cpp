@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <netdb.h>
@@ -11,6 +12,8 @@
 #define PORT 5000
 
 #define WRONG_COMMAND "wrong command"
+#define FILE_NOT_EXISTS "file doesn't exists"
+#define WRONG_FIELD "wrong field axis"
 
 using namespace std;
 
@@ -101,6 +104,50 @@ string rcv_file(int sock)
 	return filename;
 }
 
+// bool ifFileExists (const std::string& name) {
+// 	struct stat buffer;
+// 	return (stat (name.c_str(), &buffer) == 0);
+// }
+
+// bool command_check(string s, string& err)
+// {
+// 	if(s.rfind("/sort", 0) == 0 || s.rfind("/merge", 0) == 0 || s.rfind("/similarity", 0) == 0)
+// 	{
+// 		if(s.rfind("/similarity", 0) == 0 || ((s.rfind("/sort", 0) == 0 || s.rfind("/merge", 0) == 0) && (s[s.length()-1] == 'D' || s[s.length()-1] == 'N' || s[s.length()-1] == 'P')))
+// 		{
+// 			if(s.rfind("/sort", 0) == 0 || s.rfind("/merge", 0) == 0)
+// 				s = s.substr(s.find(" ") + 1, s.rfind(" "));
+// 			else
+// 				s = s.substr(s.find(" ") + 1, s.length());
+// 			int j = 0;
+// 			for(int i = 0; i < s.length(); i++)
+// 			{
+// 				if(s[i] == ' ')
+// 				{
+// 					if(!ifFileExists(s.substr(j, i)))
+// 					{
+// 						err = FILE_NOT_EXISTS;
+// 						return false;
+// 					}
+// 					j = i+1;
+// 				}
+// 			}
+// 			err = "";
+// 			return true;
+// 		}
+// 		else
+// 		{
+// 			err = WRONG_FIELD;
+// 			return false;
+// 		}
+// 	}
+// 	else
+// 	{
+// 		err = WRONG_COMMAND;
+// 		return false;
+// 	}
+// }
+
 string* split(string s,char c, int& count) {
 	string static strar[1000];
 	count = 0;
@@ -187,25 +234,6 @@ int main()
 
 			if(s.rfind("/merge", 0) == 0)
 			{
-				// int count;
-				// string* str = split(s, ' ', count);
-				// if(count != 4)
-				// {
-				// 	cout << WRONG_COMMAND << endl;
-				// 	continue;
-				// }
-				// char by = str[count - 1][0];
-				
-				
-				// bzero(buffer, 1024);
-				// n = read(sock_fd,buffer,1024);
-				// s = buffer;
-				// if(s.rfind("ERROR", 0) != 0)
-				// {
-				// 	rcv_file(sock_fd);
-				// }
-				// else
-				// 	cout << s << "\n";
 				int count;
 				string* str = split(s, ' ', count);
 				char by = str[count - 1][0];
@@ -260,7 +288,7 @@ int main()
 		}
 		else
 		{
-			cout << "Wrong command\n";
+			// cout << err << "\n";
 			getline(cin, s);
 		}
 	}
