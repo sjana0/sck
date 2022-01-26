@@ -383,8 +383,8 @@ bool isValidBill(string filename)
 string sort_bills(string filename, char by, int count)
 {
 
-	ifstream fi;
-	fi.open(filename, ios::in);
+	ifstream fi(filename);
+	// fi.open(filename, ios::in);
 	string s;
 	record rec[count+5];
 	cout << "sort print " << filename << " by " << by << "\n";
@@ -433,43 +433,49 @@ string sort_bills(string filename, char by, int count)
 	return filename;
 }
 
-string merge(string* filenameAr, int n, char by)
+string merge(string filename1, string filename2, char by)
 {
-	string filename = filenameAr[0].substr(0, filenameAr[0].length() - 4) + "_merge" + ".txt";
+
+	string filename = filename1.substr(0, filename1.length() - 4) + "_merge" + ".txt";
 	ofstream fo(filename);
-	for(int i = 0; i < n; i++)
+	int count = 0;
+	if(isValidBill(filename1) && isValidBill(filename2))
 	{
-		if(isValidBill(filenameAr[i]))
+		if(isSorted(filename1, by) && isSorted(filename2, by))
 		{
-			if(isSorted(filenameAr[i], by))
+			ifstream fi1(filename1), fi2(filename2);
+			string s;
+			while(!fi1.eof())
 			{
-				ifstream fi(filenameAr[i]);
-				string s;
-				while(!fi.eof())
-				{
-					getline(fi, s);
-					fo << s << endl;
-				}
-				fi.close();
+				getline(fi1, s);
+				fo << s << endl;
+				count++;
 			}
-			else
+			fi1.close();
+			while(!fi2.eof())
 			{
-				fo.close();
-				return NOT_SORTED_ALONG_FIELD;
+				getline(fi2, s);
+				fo << s << endl;
+				count++;
 			}
+			fi2.close();
 		}
 		else
 		{
 			fo.close();
-			return INVALID_BILL;
+			return NOT_SORTED_ALONG_FIELD;
 		}
+	}
+	else
+	{
+		fo.close();
+		return INVALID_BILL;
 	}
 	fo.close();
 	remove_empty_line(filename);
-	int cnt;
 	cout << "reached hear2: "<< filename << "\n";
 	sleep(2);
-	sort_bills(filename, by, cnt);
+	sort_bills(filename, by, count);
 	cout << "reached hear3: "<< filename << "\n";
 	return filename;
 }
@@ -608,14 +614,16 @@ int main()
 
 					else if(str[0].compare("/merge") == 0)
 					{
-						string filenameAr[count - 2];
-						for(int i = 0; i < count-2; i++)
-						{
-							int cont = 0;
-							filenameAr[i] = rcv_file(new_sock, cont);
-						}
-						// filenameSend = str[1];
-						filename = merge(filenameAr, count-2, str[count - 1][0]);
+						string filename1, filename2;
+						filename1 = str[1];
+						filename2 = str[2];
+						filenameSend = str[3];
+						int cont;
+
+						rcv_file(new_sock, cont);
+						rcv_file(new_sock, cont);
+
+						filename = merge(filename1, filename2, str[count - 1][0]);
 						if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
 							passFile = true;
 					}
@@ -647,7 +655,7 @@ int main()
 						send(new_sock, s.c_str(), s.length(), 0);
 						send_file(filename, filenameSend, new_sock);
 					}
-					break;
+					// break;
 					bzero(buffer, 1024);
 					valread = read( new_sock , buffer, 1024);
 					s = buffer;

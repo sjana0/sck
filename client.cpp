@@ -237,15 +237,14 @@ int main()
 				int count;
 				string* str = split(s, ' ', count);
 				char by = str[count - 1][0];
-				if(count != 4 || (by != 'D' && by != 'N' && by != 'P'))
+				if(count != 5 || (by != 'D' && by != 'N' && by != 'P'))
 				{
 					cout << WRONG_COMMAND << by << endl;
 					goto L;
 				}
-				for(int i = 0; i < count-2; i++)
-				{
-					send_file(str[i+1], sock_fd);
-				}
+
+				send_file(str[1], sock_fd);
+				send_file(str[2], sock_fd);
 				
 				bzero(buffer, 1024);
 				n = read(sock_fd,buffer,1024);
