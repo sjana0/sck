@@ -72,6 +72,7 @@ string rcv_file(int sock)
 	bzero(buffer, 1024);
 	read(sock, buffer, 1024);
 	string filename = buffer;
+	cout << "recieve file\n";
 	
 	ofstream fo(filename);
 	
@@ -162,10 +163,11 @@ int main()
 				cout << "sorting\n";
 				int count;
 				string* str = split(s, ' ', count);
-				if(count != 3)
+				char by = str[count - 1][0];
+				if(count != 3 || (by != 'D' && by != 'N' && by != 'P'))
 				{
-					cout << WRONG_COMMAND << endl;
-					continue;
+					cout << WRONG_COMMAND << by << endl;
+					goto L;
 				}
 				send_file(str[1], sock_fd);
 				bzero(buffer, 1024);
@@ -185,47 +187,44 @@ int main()
 
 			if(s.rfind("/merge", 0) == 0)
 			{
+				// int count;
+				// string* str = split(s, ' ', count);
+				// if(count != 4)
+				// {
+				// 	cout << WRONG_COMMAND << endl;
+				// 	continue;
+				// }
+				// char by = str[count - 1][0];
+				
+				
+				// bzero(buffer, 1024);
+				// n = read(sock_fd,buffer,1024);
+				// s = buffer;
+				// if(s.rfind("ERROR", 0) != 0)
+				// {
+				// 	rcv_file(sock_fd);
+				// }
+				// else
+				// 	cout << s << "\n";
 				int count;
 				string* str = split(s, ' ', count);
-				if(count != 4)
+				char by = str[count - 1][0];
+				if(count != 4 || (by != 'D' && by != 'N' && by != 'P'))
 				{
-					cout << WRONG_COMMAND << endl;
-					continue;
+					cout << WRONG_COMMAND << by << endl;
+					goto L;
 				}
-				char by = str[3][0];
-				ifstream fi1(str[1]), fi2(str[2]);
-				while(!fi1.eof())
+				for(int i = 0; i < count-2; i++)
 				{
-					getline(fi1, s);
-					write(sock_fd, s.c_str(), s.length());
+					send_file(str[i+1], sock_fd);
 				}
-				s = "eof";
-				write(sock_fd, s.c_str(), s.length());
-				while(!fi2.eof())
-				{
-					getline(fi2, s);
-					write(sock_fd, s.c_str(), s.length());
-				}
-				s = "eof";
-				write(sock_fd, s.c_str(), s.length());
-				fi1.close();fi2.close();
+				
 				bzero(buffer, 1024);
 				n = read(sock_fd,buffer,1024);
 				s = buffer;
 				if(s.rfind("ERROR", 0) != 0)
 				{
-					ofstream fo(s);
-					bzero(buffer, 1024);
-					n = read(sock_fd,buffer,1024);
-					s = buffer;
-					while(s.compare("eof") != 0)
-					{
-						fo << s << endl;
-						bzero(buffer, 1024);
-						n = read(sock_fd,buffer,1024);
-						s = buffer;
-					}
-					fo.close();
+					rcv_file(sock_fd);
 				}
 				else
 					cout << s << "\n";
@@ -237,7 +236,7 @@ int main()
 				if(count != 3)
 				{
 					cout << WRONG_COMMAND << endl;
-					continue;
+					goto L;
 				}
 				
 				send_file(str[1], sock_fd);
@@ -255,6 +254,7 @@ int main()
 				else
 					cout << s << "\n";
 			}
+			L:s = "";
 			getline(cin, s);
 			// cout << s << "\n";
 		}

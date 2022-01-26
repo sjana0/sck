@@ -430,36 +430,74 @@ string sort_bills(string filename, char by, int count)
 	return filename;
 }
 
-string merge(string filename1, string filename2, char by)
+// string merge(string filename1, string filename2, char by)
+// {
+// 	if(isValidBill(filename1) && isValidBill(filename2))
+// 	{
+// 		string filename = filename1.substr(0, filename1.length() - 4) + "_merge" + ".txt";
+// 		if(isSorted(filename1, by) && isSorted(filename2, by))
+// 		{
+// 			ifstream fi1(filename1), fi2(filename2);
+// 			ofstream fo(filename);
+// 			string s;
+// 			while(!fi1.eof())
+// 			{
+// 				getline(fi1, s);
+// 				fo << s << endl;
+// 			}
+// 			while(!fi2.eof())
+// 			{
+// 				getline(fi2, s);
+// 				fo << s << endl;
+// 			}
+// 			fi1.close();
+// 			fi2.close();
+// 			fo.close();
+// 			return filename;
+// 		}
+// 		else
+// 			return NOT_SORTED_ALONG_FIELD;
+// 	}
+// 	else
+// 		return INVALID_BILL;
+// }
+
+string merge(string* filenameAr, int n, char by)
 {
-	if(isValidBill(filename1) && isValidBill(filename2))
+	string filename = filenameAr[0].substr(0, filenameAr[0].length() - 4) + "_merge" + ".txt";
+	ofstream fo(filename);
+	for(int i = 0; i < n; i++)
 	{
-		string filename = filename1.substr(0, filename1.length() - 4) + "_merge" + ".txt";
-		if(isSorted(filename1, by) && isSorted(filename2, by))
+		if(isValidBill(filenameAr[i]))
 		{
-			ifstream fi1(filename1), fi2(filename2);
-			ofstream fo(filename);
-			string s;
-			while(!fi1.eof())
+			if(isSorted(filenameAr[i], by))
 			{
-				getline(fi1, s);
-				fo << s << endl;
+				ifstream fi(filenameAr[i]);
+				string s;
+				while(!fi.eof())
+				{
+					getline(fi, s);
+					fo << s << endl;
+				}
+				fi.close();
 			}
-			while(!fi2.eof())
+			else
 			{
-				getline(fi2, s);
-				fo << s << endl;
+				fo.close();
+				return NOT_SORTED_ALONG_FIELD;
 			}
-			fi1.close();
-			fi2.close();
-			fo.close();
-			return filename;
 		}
 		else
-			return NOT_SORTED_ALONG_FIELD;
+		{
+			fo.close();
+			return INVALID_BILL;
+		}
 	}
-	else
-		return INVALID_BILL;
+	fo.close();
+	remove_empty_line(filename);
+	int cnt;
+	sort_bills(filename, by, cnt);
+	return filename;
 }
 
 string similarity(string filename1, string filename2)
@@ -595,24 +633,14 @@ int main()
 
 					else if(str[0].compare("/merge") == 0)
 					{
+						string filenameAr[count - 2];
 						for(int i = 0; i < count-2; i++)
 						{
-							ofstream of;
-							of.open(str[i+1]);
-							bzero(buffer, 1024);
-							read( new_sock , buffer, 1024);
-							s = buffer;
-							while(s.compare("eof") != 0)
-							{
-								of << s+"\n";
-								bzero(buffer, 1024);
-								read( new_sock , buffer, 1024);
-								s = buffer;
-							}
-							of.close();
+							int cont = 0;
+							filenameAr[i] = rcv_file(new_sock, cont);
 						}
 						filenameSend = str[1];
-						filename = merge("server_" + str[1], "server_" + str[2], str[count - 1][0]);
+						filename = merge(filenameAr, count-2, str[count - 1][0]);
 						if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
 							passFile = true;
 					}
