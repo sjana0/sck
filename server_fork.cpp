@@ -28,6 +28,28 @@ int Lines = -1;
 // share memory operation
 int shmid = shmget(IPC_PRIVATE, sizeof(int), 0777|IPC_CREAT);
 
+void remove_empty_line(string filename)
+{
+	ifstream fin(filename);
+	ofstream fout("temp.txt");
+	string rep, rep1;
+	getline(fin, rep);
+	while(!fin.eof())
+	{
+		rep1 = rep;
+		getline(fin, rep);
+		// cout << "rep1: " << rep1 << " rep: " << rep << "\n";
+		if(rep.compare("") == 0)
+			fout << rep1;
+		else
+			fout << rep1 << endl;
+	}
+	fout.close();
+	fin.close();
+	remove(filename.c_str());
+	rename("temp.txt", filename.c_str());
+}
+
 /***
 send file will have the file name that have to be sent
 the name of the file in server side that has to be sent
@@ -464,6 +486,8 @@ string similarity(string filename1, string filename2)
 		}
 		fi1.close();
 		fi2.close();
+		cout << "calling out the function\n";
+		remove_empty_line(filename);
 		return filename;
 	}
 	else

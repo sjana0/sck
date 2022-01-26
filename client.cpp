@@ -250,7 +250,7 @@ int main()
 				if(s.rfind("ERROR", 0) != 0)
 				{
 					cout << s << endl;
-					// rcv_file(sock_fd);
+					rcv_file(sock_fd);
 				}
 				else
 					cout << s << "\n";
