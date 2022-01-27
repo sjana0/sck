@@ -1,13 +1,13 @@
 #include <stdio.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/shm.h>
-#include <stdlib.h>
-#include <netinet/in.h>
-#include <sys/sendfile.h>
 #include <string.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <sys/time.h>
 #include <iostream>
 #include <fstream>
 #include <regex>
@@ -19,14 +19,11 @@
 #define NOT_SORTED_ALONG_FIELD "ERROR: files aren't sorted along the field axis\n"
 #define SUCCESSFUL_CONNECTION "successful connection"
 #define SERVER_BUSY "unsuccessful connection server is busy(MAX 5 client reached)"
-#define MAX_CHILD 2
+#define MAX_CLIENTS 2
 #define MAX_VALID_YR 9999
 #define MIN_VALID_YR 1800
 
 using namespace std;
-
-// share memory operation
-int shmid = shmget(IPC_PRIVATE, sizeof(int), 0777|IPC_CREAT);
 
 void remove_empty_line(string filename)
 {
@@ -165,7 +162,7 @@ string* split(string s,char c, int& count) {
 		j++;
 	}
 	strar[count] = s.substr(i,j-i);
-    count++;
+	count++;
 	return strar;
 }
 
@@ -500,174 +497,234 @@ string similarity(string filename1, string filename2)
 		return INVALID_BILL;
 }
 
-
-int main()
+int main(int argc , char *argv[])
 {
-	// initialize shared memory
-	int *a;
-	a = (int*)shmat(shmid, 0, 0);
-	a[0] = MAX_CHILD;
-
-	pid_t p;
-
-
-	int sock_fd, new_sock, valread;
+	int opt = true;
+	int master_socket , addrlen , new_socket , client_socket[MAX_CLIENTS] , max_clients = MAX_CLIENTS , activity, i , valread , sd;
+	int max_sd;
 	struct sockaddr_in address;
-	int opt = 1, i, j;
-	int addrlen = sizeof(address);
-	char buffer[1024];
-
-	bzero((char *) &address, sizeof(address));
-
-	if ((sock_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+	 
+	char buffer[1025];  //data buffer of 1K
+	 
+	//set of socket descriptors
+	fd_set readfds;
+	 
+	//a message
+	char *message = SUCCESSFUL_CONNECTION;
+ 
+	//initialise all client_socket[] to 0 so not checked
+	for (i = 0; i < max_clients; i++) 
+	{
+		client_socket[i] = 0;
+	}
+	 
+	//create a master socket
+	if( (master_socket = socket(AF_INET , SOCK_STREAM , 0)) == 0) 
 	{
 		perror("socket failed");
 		exit(EXIT_FAILURE);
 	}
-
-	if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
-    {
-        perror("setsockopt");
-        exit(EXIT_FAILURE);
-    }
-
+ 
+	//set master socket to allow multiple connections , this is just a good habit, it will work without this
+	if( setsockopt(master_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0 )
+	{
+		perror("setsockopt");
+		exit(EXIT_FAILURE);
+	}
+ 
+	//type of socket created
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = INADDR_ANY;
 	address.sin_port = htons( PORT );
-
-	// Forcefully attaching socket to the port 5000
-	if (bind(sock_fd, (struct sockaddr *)&address, sizeof(address))<0)
+	 
+	//bind the socket to localhost port 5000
+	if (bind(master_socket, (struct sockaddr *)&address, sizeof(address))<0) 
 	{
 		perror("bind failed");
 		exit(EXIT_FAILURE);
 	}
-
-	if (listen(sock_fd, 2) < 0)
+	printf("Listener on port %d \n", PORT);
+	
+	//try to specify maximum of 3 pending connections for the master socket
+	if (listen(master_socket, 3) < 0)
 	{
 		perror("listen");
 		exit(EXIT_FAILURE);
 	}
-
-	struct sockaddr_in cli_addr;
-	socklen_t clilen;
-	clilen = sizeof(cli_addr);
-	while(1)
+	 
+	//accept the incoming connection
+	addrlen = sizeof(address);
+	puts("Waiting for connections ...");
+	
+	while(true) 
 	{
-		if ((new_sock = accept(sock_fd, (struct sockaddr *)&cli_addr, (socklen_t*)&clilen))<0)
+		//clear the socket set
+		FD_ZERO(&readfds);
+ 
+		//add master socket to set
+		FD_SET(master_socket, &readfds);
+		max_sd = master_socket;
+		
+		//add child sockets to set
+		for ( i = 0 ; i < max_clients ; i++) 
 		{
-			perror("accept");
-			exit(EXIT_FAILURE);
+			//socket descriptor
+			sd = client_socket[i];
+			
+			//if valid socket descriptor then add to read list
+			if(sd > 0)
+				FD_SET( sd , &readfds);
+			
+			//highest file descriptor number, need it for the select function
+			if(sd > max_sd)
+				max_sd = sd;
 		}
-		if(a[0] != 0)
+ 
+		//wait for an activity on one of the sockets , timeout is NULL , so wait indefinitely
+		activity = select( max_sd + 1 , &readfds , NULL , NULL , NULL);
+   
+		if ((activity < 0) && (errno!=EINTR)) 
 		{
-			p = fork();
-
-			if(p)
+			printf("select error");
+		}
+		 
+		//If something happened on the master socket , then its an incoming connection
+		if (FD_ISSET(master_socket, &readfds)) 
+		{
+			if ((new_socket = accept(master_socket, (struct sockaddr *)&address, (socklen_t*)&addrlen))<0)
 			{
-				// close(new_sock);
-				if(a[0] != 0)
+				perror("accept");
+				exit(EXIT_FAILURE);
+			}
+		 
+			//inform user of socket number - used in send and receive commands
+			printf("New connection , socket fd is %d , ip is : %s , port : %d \n" , new_socket , inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
+	   
+			//send new connection greeting message
+			if( send(new_socket, message, strlen(message), 0) != strlen(message) ) 
+			{
+				perror("send");
+			}
+			 
+			puts("Welcome message sent successfully");
+			 
+			//add new socket to array of sockets
+			for (i = 0; i < max_clients; i++) 
+			{
+				//if position is empty
+				if( client_socket[i] == 0 )
 				{
-					a[0]--;
-					cout << "client new "<<a[0] << "\n";
-				}
-				
-			}
-			else
-			{
-				// child process: process command from client
-				close(sock_fd);
-				bzero(buffer, 1024);
-				sprintf(buffer, "%s", SUCCESSFUL_CONNECTION);
-				write(new_sock, buffer, strlen(buffer));
-				buffer[0] = '\0';
-
-				valread = read( new_sock , buffer, 1024);
-				string s(buffer);
-
-				bool passFile = false;
-				while(valread > 0 && s.compare("/exit") != 0) {
-					int count = 0;
-					string* str = split(s, ' ', count);
-					string filename = "";
-					string filenameSend = str[1];
-					cout << "command: " << s << "\n";
-					// sorting
-					if(str[0].compare("/sort") == 0)
-					{
-						char by = str[2][0];
-						cout << s << "\n" << by << "\n";
-						int cont = 0;
-						filename = rcv_file(new_sock, cont);
-						filename = sort_bills(filename, by, cont);
-						if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
-							passFile = true;
-					}
-					// merge
-
-					else if(str[0].compare("/merge") == 0)
-					{
-						string filename1, filename2;
-						filename1 = str[1];
-						filename2 = str[2];
-						filenameSend = str[3];
-						int cont;
-
-						rcv_file(new_sock, cont);
-						rcv_file(new_sock, cont);
-
-						filename = merge(filename1, filename2, str[count - 1][0]);
-						if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
-							passFile = true;
-					}
-
-					// similarity check
+					client_socket[i] = new_socket;
+					printf("Adding to list of sockets as %d\n" , i);
 					
-					else if(str[0].compare("/similarity") == 0)
-					{
-						string filename1 = str[1];
-						string filename2 = str[2];
-						int cont = 0;
-
-						filenameSend = filename1.substr(0, filename1.length() - 4) + "_sim_" + filename2;
-						cout << "filename1: " << filename1 << "filename2: " << filename2 << "filenameSend: " << filenameSend << "\n";
-						rcv_file(new_sock, cont);
-						rcv_file(new_sock, cont);
-						filename = similarity("server_" + filename1, "server_" + filename2);
-						if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
-							passFile = true;
-					}
-					if(!passFile)
-					{
-						send(new_sock, filename.c_str(), filename.length(), 0);
-					}
-					else
-					{
-						cout << "outside passfile: "<<filename <<"\n";
-						s = "Successful command\n";
-						send(new_sock, s.c_str(), s.length(), 0);
-						send_file(filename, filenameSend, new_sock);
-					}
-					// break;
-					bzero(buffer, 1024);
-					valread = read( new_sock , buffer, 1024);
-					s = buffer;
-					cout << s << "\n";
+					break;
 				}
-				close(new_sock);
-				a[0]++;
-				cout << "making shm leaving " << a[0] << "\n";
-				break;
-				// child process
 			}
 		}
-		else
+		 
+		//else its some IO operation on some other socket :)
+		for (i = 0; i < max_clients; i++) 
 		{
-			cout << "doing it\n";
-			bzero(buffer, 1024);
-			sprintf(buffer, "%s", SERVER_BUSY);
-			write(new_sock, buffer, strlen(buffer));
-			buffer[0] = '\0';
-			close(new_sock);
+			sd = client_socket[i];
+			 
+			if (FD_ISSET( sd , &readfds)) 
+			{
+				//Check if it was for closing , and also read the incoming message
+				if ((valread = read( sd , buffer, 1024)) == 0)
+				{
+					//Somebody disconnected , get his details and print
+					getpeername(sd , (struct sockaddr*)&address , (socklen_t*)&addrlen);
+					printf("Host disconnected , ip %s , port %d \n" , inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
+					 
+					//Close the socket and mark as 0 in list for reuse
+					close( sd );
+					client_socket[i] = 0;
+				}
+				 
+				//Echo back the message that came in
+				else
+				{
+					//set the string terminating NULL byte on the end of the data read
+					buffer[valread] = '\0';
+					string s = buffer;
+					cout << s << "\n";
+					// break;
+
+					bool passFile = false;
+					while(valread > 0 && s.compare("/exit") != 0) {
+						int count = 0;
+						string* str = split(s, ' ', count);
+						string filename = "";
+						string filenameSend = str[1];
+						cout << "command: " << s << "\n";
+						// sorting
+						if(str[0].compare("/sort") == 0)
+						{
+							char by = str[2][0];
+							cout << s << "\n" << by << "\n";
+							int cont = 0;
+							filename = rcv_file(sd, cont);
+							filename = sort_bills(filename, by, cont);
+							if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
+								passFile = true;
+						}
+						// merge
+
+						else if(str[0].compare("/merge") == 0)
+						{
+							string filename1, filename2;
+							filename1 = str[1];
+							filename2 = str[2];
+							filenameSend = str[3];
+							int cont;
+
+							rcv_file(sd, cont);
+							rcv_file(sd, cont);
+
+							filename = merge(filename1, filename2, str[count - 1][0]);
+							if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
+								passFile = true;
+						}
+
+						// similarity check
+						
+						else if(str[0].compare("/similarity") == 0)
+						{
+							string filename1 = str[1];
+							string filename2 = str[2];
+							int cont = 0;
+
+							filenameSend = filename1.substr(0, filename1.length() - 4) + "_sim_" + filename2;
+							cout << "filename1: " << filename1 << "filename2: " << filename2 << "filenameSend: " << filenameSend << "\n";
+							rcv_file(sd, cont);
+							rcv_file(sd, cont);
+							filename = similarity("server_" + filename1, "server_" + filename2);
+							if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
+								passFile = true;
+						}
+						if(!passFile)
+						{
+							send(sd, filename.c_str(), filename.length(), 0);
+						}
+						else
+						{
+							cout << "outside passfile: "<<filename <<"\n";
+							s = "Successful command\n";
+							send(sd, s.c_str(), s.length(), 0);
+							send_file(filename, filenameSend, sd);
+						}
+						// break;
+						bzero(buffer, 1024);
+						valread = read( sd , buffer, 1024);
+						s = buffer;
+						cout << s << "\n";
+					}
+					close(sd);
+					// child process
+				}
+			}
 		}
 	}
+	 
+	return 0;
 }

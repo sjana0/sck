@@ -200,8 +200,10 @@ int main()
 	bzero(buffer, 1024);
 	read(sock_fd, buffer, 1024);
 	s = buffer;
+	cout << s << "\n";
 	if(s.compare(SUCCESSFUL_CONNECTION) == 0)
 	{
+		s = "";
 		getline(cin, s);
 
 		while(s.compare("/exit") != 0)
@@ -210,6 +212,7 @@ int main()
 			{
 				// cout << "boooyay\n" << s;
 				// break;
+				cout << s << "\n";
 				n = write(sock_fd, s.c_str(), s.length());
 				
 				if(s.rfind("/sort", 0) == 0)
