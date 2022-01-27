@@ -555,7 +555,7 @@ int main(int argc , char *argv[])
 	fd_set readfds;
 	 
 	//a message
-	char *message = SUCCESSFUL_CONNECTION;
+	// char *message = SUCCESSFUL_CONNECTION;
  
 	//initialise all client_socket[] to 0 so not checked
 	for (i = 0; i < max_clients; i++) 
@@ -646,14 +646,15 @@ int main(int argc , char *argv[])
 			printf("New connection , socket fd is %d , ip is : %s , port : %d \n" , new_socket , inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
 	   
 			//send new connection greeting message
-			if( send(new_socket, message, strlen(message), 0) != strlen(message) ) 
-			{
-				perror("send");
-			}
+			// if( send(new_socket, message, strlen(message), 0) != strlen(message) ) 
+			// {
+			// 	perror("send");
+			// }
 			 
 			puts("Welcome message sent successfully");
 			 
 			//add new socket to array of sockets
+			string msg = SERVER_BUSY;
 			for (i = 0; i < max_clients; i++) 
 			{
 				//if position is empty
@@ -661,10 +662,17 @@ int main(int argc , char *argv[])
 				{
 					client_socket[i] = new_socket;
 					printf("Adding to list of sockets as %d\n" , i);
-					
+					msg = SUCCESSFUL_CONNECTION;
 					break;
 				}
 			}
+
+			buffer[0] = '\0';
+			bzero(buffer, 1024);
+			strcpy(buffer, msg.c_str());
+			send(new_socket, buffer, msg.length(), 0);
+			buffer[0] = '\0';
+			bzero(buffer, 1024);
 		}
 		 
 		//else its some IO operation on some other socket :)
