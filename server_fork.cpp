@@ -17,6 +17,8 @@
 #define WRONG_COMMAND "ERROR: command not recognized\n"
 #define INVALID_BILL "ERROR: invalid records in bill\n"
 #define NOT_SORTED_ALONG_FIELD "ERROR: files aren't sorted along the field axis\n"
+#define SUCCESSFUL_CONNECTION "successful connection"
+#define SERVER_BUSY "unsuccessful connection server is busy(MAX 5 client reached)"
 #define MAX_CHILD 2
 #define MAX_VALID_YR 9999
 #define MIN_VALID_YR 1800
@@ -230,52 +232,40 @@ public:
 		validity = true;
 		cout << "record inside class: " << s << "\n";
 		regex reg("([0-3][0-9]\\.[0-1][0-2]\\.[1-2][0-9][0-9][0-9] \\S* \\d*\\.?\\d*)");
-		// if(!regex_match(s, reg))
-		// {
-		//	cout << "in regex match\n";
-		// 	cout << "here invalidated1\n";
-		// 	validity = false;
-		// 	date = "";
-		// 	item = "";
-		// 	price = -1;
-		// }
-		// else
-		// {
-			string* str = split(s, ' ', cnt);
-			date = str[0];
-			item = str[1];
-			if(cnt != 3)
+		string* str = split(s, ' ', cnt);
+		date = str[0];
+		item = str[1];
+		if(cnt != 3)
+		{
+			cout << "here invalidated2\n";
+			validity = false;
+			date = "";
+			item = "";
+			price = -1;
+		}
+		else if(!isValidDate(date))
+		{
+			cout << "here invalidated3\n";
+			validity = false;
+			date = "";
+			price = -1;
+		}
+		else
+		{
+			try
 			{
-				cout << "here invalidated2\n";
-				validity = false;
-				date = "";
-				item = "";
+				date = str[0];
+				item = str[1];
+				price = stod(str[2]);
+				cout << "ok\n";
+			}
+			catch(int x)
+			{
+				cout << "here invalidated4\n";
 				price = -1;
-			}
-			else if(!isValidDate(date))
-			{
-				cout << "here invalidated3\n";
 				validity = false;
-				date = "";
-				price = -1;
 			}
-			else
-			{
-				try
-				{
-					date = str[0];
-					item = str[1];
-					price = stod(str[2]);
-					cout << "ok\n";
-				}
-				catch(int x)
-				{
-					cout << "here invalidated4\n";
-					price = -1;
-					validity = false;
-				}
-			}
-		// }
+		}
 	}
 
 	bool isRecValid()
@@ -565,13 +555,13 @@ int main()
 	clilen = sizeof(cli_addr);
 	while(1)
 	{
+		if ((new_sock = accept(sock_fd, (struct sockaddr *)&cli_addr, (socklen_t*)&clilen))<0)
+		{
+			perror("accept");
+			exit(EXIT_FAILURE);
+		}
 		if(a[0] != 0)
 		{
-			if ((new_sock = accept(sock_fd, (struct sockaddr *)&cli_addr, (socklen_t*)&clilen))<0)
-			{
-				perror("accept");
-				exit(EXIT_FAILURE);
-			}
 			p = fork();
 
 			if(p)
@@ -588,6 +578,10 @@ int main()
 			{
 				// child process: process command from client
 				close(sock_fd);
+				bzero(buffer, 1024);
+				sprintf(buffer, "%s", SUCCESSFUL_CONNECTION);
+				write(new_sock, buffer, strlen(buffer));
+				buffer[0] = '\0';
 
 				valread = read( new_sock , buffer, 1024);
 				string s(buffer);
@@ -671,32 +665,11 @@ int main()
 		else
 		{
 			cout << "doing it\n";
-			close(sock_fd);
-			while(a[0] == 0);
-			if ((sock_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
-			{
-				perror("socket failed");
-				exit(EXIT_FAILURE);
-			}
-
-			if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
-			{
-				perror("setsockopt");
-				exit(EXIT_FAILURE);
-			}
-
-			// Forcefully attaching socket to the port 5000
-			if (bind(sock_fd, (struct sockaddr *)&address, sizeof(address))<0)
-			{
-				perror("bind failed");
-				exit(EXIT_FAILURE);
-			}
-
-			if (listen(sock_fd, 2) < 0)
-			{
-				perror("listen");
-				exit(EXIT_FAILURE);
-			}
+			bzero(buffer, 1024);
+			sprintf(buffer, "%s", SERVER_BUSY);
+			write(new_sock, buffer, strlen(buffer));
+			buffer[0] = '\0';
+			close(new_sock);
 		}
 	}
 }

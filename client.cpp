@@ -14,6 +14,8 @@
 #define WRONG_COMMAND "wrong command"
 #define FILE_NOT_EXISTS "file doesn't exists"
 #define WRONG_FIELD "wrong field axis"
+#define SUCCESSFUL_CONNECTION "successful connection"
+#define SERVER_BUSY "unsuccessful connection server is busy(MAX 5 client reached)"
 
 using namespace std;
 
@@ -195,101 +197,112 @@ int main()
 		perror("ERROR connecting");
 	}
 
-	getline(cin, s);
-
-	while(s.compare("/exit") != 0)
+	bzero(buffer, 1024);
+	read(sock_fd, buffer, 1024);
+	s = buffer;
+	if(s.compare(SUCCESSFUL_CONNECTION) == 0)
 	{
-		if(regex_match(s, m, reg))
+		getline(cin, s);
+
+		while(s.compare("/exit") != 0)
 		{
-			// cout << "boooyay\n" << s;
-			// break;
-			n = write(sock_fd, s.c_str(), s.length());
-			
-			if(s.rfind("/sort", 0) == 0)
+			if(regex_match(s, m, reg))
 			{
-				cout << "sorting\n";
-				int count;
-				string* str = split(s, ' ', count);
-				char by = str[count - 1][0];
-				if(count != 3 || (by != 'D' && by != 'N' && by != 'P'))
+				// cout << "boooyay\n" << s;
+				// break;
+				n = write(sock_fd, s.c_str(), s.length());
+				
+				if(s.rfind("/sort", 0) == 0)
 				{
-					cout << WRONG_COMMAND << by << endl;
-					goto L;
-				}
-				send_file(str[1], sock_fd);
-				bzero(buffer, 1024);
-				n = read(sock_fd,buffer,1024);
-				s = buffer;
-				if(s.rfind("ERROR", 0) != 0)
-				{
-					cout << s << "\n";
-					// break;
-					rcv_file(sock_fd);
-				}
-				else
-				{
-					cout << s << "\n";
-				}
-			}
-
-			if(s.rfind("/merge", 0) == 0)
-			{
-				int count;
-				string* str = split(s, ' ', count);
-				char by = str[count - 1][0];
-				if(count != 5 || (by != 'D' && by != 'N' && by != 'P'))
-				{
-					cout << WRONG_COMMAND << by << endl;
-					goto L;
+					cout << "sorting\n";
+					int count;
+					string* str = split(s, ' ', count);
+					char by = str[count - 1][0];
+					if(count != 3 || (by != 'D' && by != 'N' && by != 'P'))
+					{
+						cout << WRONG_COMMAND << by << endl;
+						goto L;
+					}
+					send_file(str[1], sock_fd);
+					bzero(buffer, 1024);
+					n = read(sock_fd,buffer,1024);
+					s = buffer;
+					if(s.rfind("ERROR", 0) != 0)
+					{
+						cout << s << "\n";
+						// break;
+						rcv_file(sock_fd);
+					}
+					else
+					{
+						cout << s << "\n";
+					}
 				}
 
-				send_file(str[1], sock_fd);
-				send_file(str[2], sock_fd);
-				
-				bzero(buffer, 1024);
-				n = read(sock_fd,buffer,1024);
-				s = buffer;
-				if(s.rfind("ERROR", 0) != 0)
+				if(s.rfind("/merge", 0) == 0)
 				{
-					rcv_file(sock_fd);
-				}
-				else
-					cout << s << "\n";
-			}
-			if(s.rfind("/similarity", 0) == 0)
-			{
-				int count;
-				string* str = split(s, ' ', count);
-				if(count != 3)
-				{
-					cout << WRONG_COMMAND << endl;
-					goto L;
-				}
-				
-				send_file(str[1], sock_fd);
-				send_file(str[2], sock_fd);
+					int count;
+					string* str = split(s, ' ', count);
+					char by = str[count - 1][0];
+					if(count != 5 || (by != 'D' && by != 'N' && by != 'P'))
+					{
+						cout << WRONG_COMMAND << by << endl;
+						goto L;
+					}
 
-				bzero(buffer, 1024);
-				n = read(sock_fd,buffer,1024);
-				s = buffer;
-				
-				if(s.rfind("ERROR", 0) != 0)
-				{
-					cout << s << endl;
-					rcv_file(sock_fd);
+					send_file(str[1], sock_fd);
+					send_file(str[2], sock_fd);
+					
+					bzero(buffer, 1024);
+					n = read(sock_fd,buffer,1024);
+					s = buffer;
+					if(s.rfind("ERROR", 0) != 0)
+					{
+						rcv_file(sock_fd);
+					}
+					else
+						cout << s << "\n";
 				}
-				else
-					cout << s << "\n";
+				if(s.rfind("/similarity", 0) == 0)
+				{
+					int count;
+					string* str = split(s, ' ', count);
+					if(count != 3)
+					{
+						cout << WRONG_COMMAND << endl;
+						goto L;
+					}
+					
+					send_file(str[1], sock_fd);
+					send_file(str[2], sock_fd);
+
+					bzero(buffer, 1024);
+					n = read(sock_fd,buffer,1024);
+					s = buffer;
+					
+					if(s.rfind("ERROR", 0) != 0)
+					{
+						cout << s << endl;
+						rcv_file(sock_fd);
+					}
+					else
+						cout << s << "\n";
+				}
+				L:s = "";
+				getline(cin, s);
+				// cout << s << "\n";
 			}
-			L:s = "";
-			getline(cin, s);
-			// cout << s << "\n";
+			else
+			{
+				// cout << err << "\n";
+				getline(cin, s);
+			}
 		}
-		else
-		{
-			// cout << err << "\n";
-			getline(cin, s);
-		}
+		close(sock_fd);
 	}
-	close(sock_fd);
+	else if(s.compare(SERVER_BUSY) == 0)
+	{
+		cout << SERVER_BUSY << "\n";
+	}
+
 }
