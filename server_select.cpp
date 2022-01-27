@@ -198,8 +198,8 @@ bool isLeap(int year)
 bool isValidDate(string date_str)
 {
 	// cout << "error here\n" << date_str << "\n";
-	int year = stoi(date_str.substr(date_str.length()-4, date_str.length()));
-	int month = stoi(date_str.substr(3, 5));
+	int year = stoi(date_str.substr(date_str.length()-4, 4));
+	int month = stoi(date_str.substr(3, 2));
 	int day = stoi(date_str.substr(0,2));
 	if (year > MAX_VALID_YR || year < MIN_VALID_YR)
 		return false;
@@ -549,7 +549,7 @@ int main(int argc , char *argv[])
 	int max_sd;
 	struct sockaddr_in address;
 	 
-	char buffer[1025];  //data buffer of 1K
+	//data buffer of 1K
 	 
 	//set of socket descriptors
 	fd_set readfds;
@@ -641,9 +641,10 @@ int main(int argc , char *argv[])
 				perror("accept");
 				exit(EXIT_FAILURE);
 			}
+			char buffer[1025];
 		 
 			//inform user of socket number - used in send and receive commands
-			printf("New connection , socket fd is %d , ip is : %s , port : %d \n" , new_socket , inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
+			// printf("New connection , socket fd is %d , ip is : %s , port : %d \n" , new_socket , inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
 	   
 			//send new connection greeting message
 			// if( send(new_socket, message, strlen(message), 0) != strlen(message) ) 
@@ -651,7 +652,7 @@ int main(int argc , char *argv[])
 			// 	perror("send");
 			// }
 			 
-			puts("Welcome message sent successfully");
+			// puts("Welcome message sent successfully");
 			 
 			//add new socket to array of sockets
 			string msg = SERVER_BUSY;
@@ -679,7 +680,7 @@ int main(int argc , char *argv[])
 		for (i = 0; i < max_clients; i++) 
 		{
 			sd = client_socket[i];
-			 
+			char buffer[1025];
 			if (FD_ISSET( sd , &readfds)) 
 			{
 				//Check if it was for closing , and also read the incoming message

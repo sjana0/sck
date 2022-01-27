@@ -201,8 +201,8 @@ bool isLeap(int year)
 bool isValidDate(string date_str)
 {
 	// cout << "error here\n" << date_str << "\n";
-	int year = stoi(date_str.substr(date_str.length()-4, date_str.length()));
-	int month = stoi(date_str.substr(3, 5));
+	int year = stoi(date_str.substr(date_str.length()-4, 4));
+	int month = stoi(date_str.substr(3, 2));
 	int day = stoi(date_str.substr(0,2));
 	if (year > MAX_VALID_YR || year < MIN_VALID_YR)
 		return false;
