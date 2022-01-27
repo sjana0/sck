@@ -707,6 +707,8 @@ int main()
 					{
 						cout << "outside passfile: "<<filename <<"\n";
 						s = "Successful command\n";
+						buffer[0] = '\0';
+						bzero(buffer, 1024);
 						strcpy(buffer, s.c_str());
 						send(new_sock, buffer, s.length(), 0);
 						buffer[0] = '\0';

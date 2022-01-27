@@ -58,17 +58,24 @@ void send_file(string filename, string filenameSend, int sock)
 	char buffer[1024];
 	string s;
 	ifstream fi(filename);
-	write(sock, filenameSend.c_str(), filenameSend.length());
+	strcpy(buffer, filenameSend.c_str());
+	write(sock, buffer, filenameSend.length());
+	buffer[0] = '\0';
+	bzero(buffer, 1024);
 	
 	while(!fi.eof())
 	{
+		buffer[0] = '\0';
 		bzero(buffer, 1024);
 		read(sock, buffer, 1024);
 		s = buffer;
 		if(s.compare("acknowledged") == 0)
 		{
+			bzero(buffer, 1024);
 			getline(fi, s);
-			write(sock, s.c_str(), s.length());
+			strcpy(buffer, s.c_str());
+			write(sock, buffer, s.length());
+			buffer[0] = '\0';
 		}
 	}
 
@@ -78,8 +85,13 @@ void send_file(string filename, string filenameSend, int sock)
 	
 	if(s.compare("acknowledged") == 0)
 	{
+		buffer[0] = '\0';
+		bzero(buffer, 1024);
 		s = "eof";
-		write(sock, s.c_str(), s.length());
+		strcpy(buffer, s.c_str());
+		write(sock, buffer, s.length());
+		buffer[0] = '\0';
+		bzero(buffer, 1024);
 	}
 }
 
@@ -105,10 +117,14 @@ string rcv_file(int sock, int& count)
 	ofstream fo(filename);
 	
 	// send ack on recieving filename
+	buffer[0] = '\0';
+	bzero(buffer, 1024);
 	s = "acknowledged";
-	write(sock, s.c_str(), s.length());
+	strcpy(buffer, s.c_str());
+	write(sock, buffer, s.length());
 	
 	// reads the first line of the file
+	buffer[0] = '\0';
 	bzero(buffer, 1024);
 	read(sock, buffer, 1024);
 	
@@ -120,9 +136,13 @@ string rcv_file(int sock, int& count)
 		s1 = s;
 
 		// first line ack
+		buffer[0] = '\0';
+		bzero(buffer, 1024);
 		s = "acknowledged";
-		write(sock, s.c_str(), s.length());
+		strcpy(buffer, s.c_str());
+		write(sock, buffer, s.length());
 		
+		buffer[0] = '\0';
 		bzero(buffer, 1024);
 		read(sock, buffer, 1024);
 		s = buffer;
@@ -139,6 +159,8 @@ string rcv_file(int sock, int& count)
 			fo << s1 << endl;
 		}
 	}
+	buffer[0] = '\0';
+	bzero(buffer, 1024);
 	fo.close();
 	return filename;
 }
@@ -162,7 +184,7 @@ string* split(string s,char c, int& count) {
 		j++;
 	}
 	strar[count] = s.substr(i,j-i);
-	count++;
+    count++;
 	return strar;
 }
 
@@ -226,7 +248,6 @@ public:
 		int cnt;
 		validity = true;
 		cout << "record inside class: " << s << "\n";
-		regex reg("([0-3][0-9]\\.[0-1][0-2]\\.[1-2][0-9][0-9][0-9] \\S* \\d*\\.?\\d*)");
 		string* str = split(s, ' ', cnt);
 		date = str[0];
 		item = str[1];
@@ -301,19 +322,34 @@ public:
 	}
 };
 
-bool recCompareD(record &lhs, record &rhs)
+bool SrecCompareD(record &lhs, record &rhs)
 {
 	return (compareDate(lhs.date, rhs.date) < 0);
 }
 
-bool recCompareN(record &lhs, record &rhs)
+bool recCompareD(record &lhs, record &rhs)
+{
+	return (compareDate(lhs.date, rhs.date) <= 0);
+}
+
+bool SrecCompareN(record &lhs, record &rhs)
 {
 	return (lhs.item.compare(rhs.item) < 0);
 }
 
-bool recCompareP(record &lhs, record &rhs)
+bool recCompareN(record &lhs, record &rhs)
+{
+	return (lhs.item.compare(rhs.item) <= 0);
+}
+
+bool SrecCompareP(record &lhs, record &rhs)
 {
 	return (lhs.price < rhs.price);
+}
+
+bool recCompareP(record &lhs, record &rhs)
+{
+	return (lhs.price <= rhs.price);
 }
 
 bool isSorted(string filename, char by)
@@ -322,9 +358,9 @@ bool isSorted(string filename, char by)
 	ifstream fi(filename);
 	string s1, s2;
 
+	getline(fi, s1);
 	while(!fi.eof())
 	{
-		getline(fi, s1);
 		getline(fi, s2);
 		record rec1(s1);
 		record rec2(s2);
@@ -340,8 +376,12 @@ bool isSorted(string filename, char by)
 		{
 			isSorted = recCompareP(rec1, rec2);
 		}
+		s1 = s2;
 		if(!isSorted)
+		{
+			cout << "it's this: " << rec1.giveString() << " | " << rec2.giveString() << "\n";
 			break;
+		}
 	}
 	return isSorted;
 }
@@ -392,16 +432,16 @@ string sort_bills(string filename, char by, int count)
 	// return "ERROR:";
 	if(by == 'D')
 	{
-		sort(rec, rec+count, recCompareD);
+		sort(rec, rec+count, SrecCompareD);
 		cout << "reached here-1: " << filename << "\n";
 	}
 	else if(by == 'N')
 	{
-		sort(rec, rec+count, recCompareN);
+		sort(rec, rec+count, SrecCompareN);
 	}
 	else if(by == 'P')
 	{
-		sort(rec, rec+count, recCompareP);
+		sort(rec, rec+count, SrecCompareP);
 	}
 	
 	ofstream fo(filename);
@@ -448,18 +488,20 @@ string merge(string filename1, string filename2, char by)
 		else
 		{
 			fo.close();
+			remove(filename.c_str());
 			return NOT_SORTED_ALONG_FIELD;
 		}
 	}
 	else
 	{
 		fo.close();
+		remove(filename.c_str());
 		return INVALID_BILL;
 	}
 	fo.close();
 	remove_empty_line(filename);
 	cout << "reached hear2: "<< filename << "\n";
-	sleep(2);
+	// sleep(2);
 	sort_bills(filename, by, count);
 	cout << "reached hear3: "<< filename << "\n";
 	return filename;
@@ -494,7 +536,10 @@ string similarity(string filename1, string filename2)
 		return filename;
 	}
 	else
+	{
+		remove(filename.c_str());
 		return INVALID_BILL;
+	}
 }
 
 int main(int argc , char *argv[])
@@ -652,6 +697,7 @@ int main(int argc , char *argv[])
 
 					bool passFile = false;
 					while(valread > 0 && s.compare("/exit") != 0) {
+						passFile = true;
 						int count = 0;
 						string* str = split(s, ' ', count);
 						string filename = "";
@@ -665,7 +711,7 @@ int main(int argc , char *argv[])
 							int cont = 0;
 							filename = rcv_file(sd, cont);
 							filename = sort_bills(filename, by, cont);
-							if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
+							if((!filename.rfind("ERROR:", 0) == 0) && (filename.rfind(".txt") == filename.length()-4))
 								passFile = true;
 						}
 						// merge
@@ -678,11 +724,15 @@ int main(int argc , char *argv[])
 							filenameSend = str[3];
 							int cont;
 
-							rcv_file(sd, cont);
-							rcv_file(sd, cont);
+							filename1 = rcv_file(sd, cont);
+							filename2 = rcv_file(sd, cont);
 
 							filename = merge(filename1, filename2, str[count - 1][0]);
-							if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
+
+							remove(filename1.c_str());
+							remove(filename2.c_str());
+
+							if((!filename.rfind("ERROR:", 0) == 0) && (filename.rfind(".txt") == filename.length()-4))
 								passFile = true;
 						}
 
@@ -696,26 +746,46 @@ int main(int argc , char *argv[])
 
 							filenameSend = filename1.substr(0, filename1.length() - 4) + "_sim_" + filename2;
 							cout << "filename1: " << filename1 << "filename2: " << filename2 << "filenameSend: " << filenameSend << "\n";
-							rcv_file(sd, cont);
-							rcv_file(sd, cont);
-							filename = similarity("server_" + filename1, "server_" + filename2);
-							if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
+							
+							filename1 = rcv_file(sd, cont);
+							filename2 = rcv_file(sd, cont);
+							
+							filename = similarity(filename1, filename2);
+
+							remove(filename1.c_str());
+							remove(filename2.c_str());
+							
+							if((!filename.rfind("ERROR:", 0) == 0) && (filename.rfind(".txt") == filename.length()-4))
 								passFile = true;
 						}
 						if(!passFile)
 						{
+							bzero(buffer, 1024);
+							strcpy(buffer, filename.c_str());
+							send(sd, buffer, filename.length(), 0);
+							buffer[0] = '\0';
+							bzero(buffer, 1024);
 							send(sd, filename.c_str(), filename.length(), 0);
 						}
 						else
 						{
 							cout << "outside passfile: "<<filename <<"\n";
 							s = "Successful command\n";
-							send(sd, s.c_str(), s.length(), 0);
+							buffer[0] = '\0';
+							bzero(buffer, 1024);
+							strcpy(buffer, s.c_str());
+							send(sd, buffer, s.length(), 0);
+							buffer[0] = '\0';
+							bzero(buffer, 1024);
 							send_file(filename, filenameSend, sd);
+							remove(filename.c_str());
 						}
 						// break;
+						buffer[0] = '\0';
 						bzero(buffer, 1024);
 						valread = read( sd , buffer, 1024);
+						buffer[0] = '\0';
+						bzero(buffer, 1024);
 						s = buffer;
 						cout << s << "\n";
 					}
