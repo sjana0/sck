@@ -784,9 +784,9 @@ int main(int argc , char *argv[])
 						buffer[0] = '\0';
 						bzero(buffer, 1024);
 						valread = read( sd , buffer, 1024);
+						s = buffer;
 						buffer[0] = '\0';
 						bzero(buffer, 1024);
-						s = buffer;
 						cout << s << "\n";
 					}
 					close(sd);

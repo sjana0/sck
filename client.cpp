@@ -13,6 +13,7 @@
 
 #define WRONG_COMMAND "wrong command"
 #define FILE_NOT_EXISTS "file doesn't exists"
+#define WRONG_NUMBER_FILE "wrong number of file supplied"
 #define WRONG_FIELD "wrong field axis"
 #define SUCCESSFUL_CONNECTION "successful connection"
 #define SERVER_BUSY "unsuccessful connection server is busy(MAX 5 client reached)"
@@ -133,49 +134,80 @@ string rcv_file(int sock)
 	return filename;
 }
 
-// bool ifFileExists (const std::string& name) {
-// 	struct stat buffer;
-// 	return (stat (name.c_str(), &buffer) == 0);
-// }
+bool command_check(string s, string& err)
+{
+	string s1;
+	if(s.rfind("/sort") == 0 || s.rfind("/merge") == 0 || s.rfind("/similarity") == 0)
+	{
+		if((s.rfind("/sort", 0) == 0 || s.rfind("/merge", 0) == 0) && (s[s.length()-1] == 'D' || s[s.length()-1] == 'N' || s[s.length()-1] == 'P'))
+		{
+			cout << "ss: " << s << " +: " << s.find(" ") << " -: " << s.rfind(" ") << "\n";
+			int p = s.find(" ") + 1;
+			int q = s.rfind(" ");
+			s1 = s.substr(p, q-p);
+			int j = 0;
+			for(int i = 0; i < s1.length(); i++)
+			{
+				if(s1[i] == ' ')
+				{
+					j++;
+				}
+			}
+			cout << "diligency: "<< j << "\n";
+			if(s.rfind("/sort", 0) == 0 && j == 0)
+			{
+				err = "";
+				return true;
+			}
+			else if(s.rfind("/merge", 0) == 0 && j == 2)
+			{
+				err = "";
+				return true;
+			}
+			else
+			{
+				cout << "ss: " << s << "\n";
+				err = WRONG_NUMBER_FILE;
+				return false;
+			}
 
-// bool command_check(string s, string& err)
-// {
-// 	if(s.rfind("/sort", 0) == 0 || s.rfind("/merge", 0) == 0 || s.rfind("/similarity", 0) == 0)
-// 	{
-// 		if(s.rfind("/similarity", 0) == 0 || ((s.rfind("/sort", 0) == 0 || s.rfind("/merge", 0) == 0) && (s[s.length()-1] == 'D' || s[s.length()-1] == 'N' || s[s.length()-1] == 'P')))
-// 		{
-// 			if(s.rfind("/sort", 0) == 0 || s.rfind("/merge", 0) == 0)
-// 				s = s.substr(s.find(" ") + 1, s.rfind(" "));
-// 			else
-// 				s = s.substr(s.find(" ") + 1, s.length());
-// 			int j = 0;
-// 			for(int i = 0; i < s.length(); i++)
-// 			{
-// 				if(s[i] == ' ')
-// 				{
-// 					if(!ifFileExists(s.substr(j, i)))
-// 					{
-// 						err = FILE_NOT_EXISTS;
-// 						return false;
-// 					}
-// 					j = i+1;
-// 				}
-// 			}
-// 			err = "";
-// 			return true;
-// 		}
-// 		else
-// 		{
-// 			err = WRONG_FIELD;
-// 			return false;
-// 		}
-// 	}
-// 	else
-// 	{
-// 		err = WRONG_COMMAND;
-// 		return false;
-// 	}
-// }
+		}
+		else if(s.rfind("/similarity") == 0)
+		{
+			int p = s.find(" ") + 1;
+			int q = s.length();
+			s1 = s.substr(p, q-p);
+			int j = 0;
+			for(int i = 0; i < s1.length(); i++)
+			{
+				if(s1[i] == ' ')
+				{
+					j++;
+				}
+			}
+			if(j == 1)
+			{
+				err = "";
+				return true;
+			}
+			else
+			{
+				err = WRONG_NUMBER_FILE;
+				return false;
+			}
+		}
+		else
+		{
+			err = WRONG_FIELD;
+			return false;
+		}
+	}
+	else
+	{
+		err = WRONG_COMMAND;
+		return false;
+	}
+}
 
 string* split(string s,char c, int& count) {
 	string static strar[1000];
@@ -237,7 +269,8 @@ int main()
 
 		while(s.compare("/exit") != 0)
 		{
-			if(regex_match(s, m, reg))
+			string err = "";
+			if(command_check(s, err))
 			{
 				// cout << "boooyay\n" << s;
 				// break;
@@ -338,7 +371,7 @@ int main()
 			}
 			else
 			{
-				// cout << err << "\n";
+				cout << err << "\n";
 				getline(cin, s);
 			}
 		}
