@@ -462,7 +462,7 @@ string merge(string filename1, string filename2, char by)
 	fo.close();
 	remove_empty_line(filename);
 	cout << "reached hear2: "<< filename << "\n";
-	sleep(2);
+	// sleep(2);
 	sort_bills(filename, by, count);
 	cout << "reached hear3: "<< filename << "\n";
 	return filename;
@@ -599,7 +599,7 @@ int main()
 						int cont = 0;
 						filename = rcv_file(new_sock, cont);
 						filename = sort_bills(filename, by, cont);
-						if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
+						if((!filename.rfind("ERROR", 0) == 0) && (filename.rfind(".txt") == filename.length()-4))
 							passFile = true;
 					}
 					// merge
@@ -616,7 +616,7 @@ int main()
 						rcv_file(new_sock, cont);
 
 						filename = merge(filename1, filename2, str[count - 1][0]);
-						if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
+						if((!filename.rfind("ERROR", 0) == 0) && (filename.rfind(".txt") == filename.length()-4))
 							passFile = true;
 					}
 
@@ -633,7 +633,7 @@ int main()
 						rcv_file(new_sock, cont);
 						rcv_file(new_sock, cont);
 						filename = similarity("server_" + filename1, "server_" + filename2);
-						if(filename.substr(filename.length()-4, filename.length()).compare(".txt") == 0)
+						if((!filename.rfind("ERROR", 0) == 0) && (filename.rfind(".txt") == filename.length()-4))
 							passFile = true;
 					}
 					if(!passFile)
@@ -646,6 +646,7 @@ int main()
 						s = "Successful command\n";
 						send(new_sock, s.c_str(), s.length(), 0);
 						send_file(filename, filenameSend, new_sock);
+						remove(filename.c_str());
 					}
 					// break;
 					bzero(buffer, 1024);
