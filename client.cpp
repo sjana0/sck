@@ -33,12 +33,17 @@ void send_file(string filename, int sock)
 
 	// wirte filename to server
 	ifstream fi(filename);
-	write(sock, filename.c_str(), filename.length());
+	bzero(buffer, 1024);
+	strcpy(buffer, filename.c_str());
+	write(sock, buffer, filename.length());
+	buffer[0] = '\0';
+	bzero(buffer, 1024);
 	
 	cout << "inside send function2\n";
 	while(!fi.eof())
 	{
 		// it reads first ack for filename from server
+		buffer[0] = '\0';
 		bzero(buffer, 1024);
 		read(sock, buffer, 1024);
 		s = buffer;
@@ -48,19 +53,29 @@ void send_file(string filename, int sock)
 		{
 			// cout << "inside send function3\n" << s << "\n";
 			// reads first line from file and sends
+			buffer[0] = '\0';
+			bzero(buffer, 1024);
 			getline(fi, s);
+			strcpy(buffer, s.c_str());
+
 			cout << "2: " << s << "\n";
-			write(sock, s.c_str(), s.length());
+			write(sock, buffer, s.length());
 			cout << "3: " << s << "\n";
 		}
 	}
+	buffer[0] = '\0';
 	bzero(buffer, 1024);
 	read(sock, buffer, 1024);
 	s = buffer;
 	if(s.compare("acknowledged") == 0)
 	{
+		buffer[0] = '\0';
+		bzero(buffer, 1024);
 		s = "eof";
-		write(sock, s.c_str(), s.length());
+		strcpy(buffer, s.c_str());
+		write(sock, buffer, s.length());
+		buffer[0] = '\0';
+		bzero(buffer, 1024);
 	}
 }
 
@@ -77,13 +92,16 @@ string rcv_file(int sock)
 	bzero(buffer, 1024);
 	read(sock, buffer, 1024);
 	string filename = buffer;
-	cout << "recieve file\n";
+	cout << "recieve file\n" << filename << "\n";
 	
 	ofstream fo(filename);
 	
 	s = "acknowledged";
-	write(sock, s.c_str(), s.length());
+	buffer[0] = '\0';
+	strcpy(buffer, s.c_str());
+	write(sock, buffer, s.length());
 	
+	buffer[0] = '\0';
 	bzero(buffer, 1024);
 	read(sock, buffer, 1024);
 	s = buffer;
@@ -92,8 +110,14 @@ string rcv_file(int sock)
 	while(s.compare("eof") != 0)
 	{
 		s1 = s;
+
+		buffer[0] = '\0';
+		bzero(buffer, 1024);
 		s = "acknowledged";
-		write(sock, s.c_str(), s.length());
+		strcpy(buffer, s.c_str());
+		write(sock, buffer, s.length());
+		
+		buffer[0] = '\0';
 		bzero(buffer, 1024);
 		read(sock, buffer, 1024);
 		s = buffer;
@@ -103,6 +127,9 @@ string rcv_file(int sock)
 		else
 			fo << s1 << endl;
 	}
+	buffer[0] = '\0';
+	bzero(buffer, 1024);
+	fo.close();
 	return filename;
 }
 
@@ -200,6 +227,8 @@ int main()
 	bzero(buffer, 1024);
 	read(sock_fd, buffer, 1024);
 	s = buffer;
+	buffer[0] = '\0';
+	bzero(buffer, 1024);
 	cout << s << "\n";
 	if(s.compare(SUCCESSFUL_CONNECTION) == 0)
 	{
@@ -213,7 +242,12 @@ int main()
 				// cout << "boooyay\n" << s;
 				// break;
 				cout << s << "\n";
-				n = write(sock_fd, s.c_str(), s.length());
+				buffer[0] = '\0';
+				bzero(buffer, 1024);
+				strcpy(buffer, s.c_str());
+				n = send(sock_fd, buffer, s.length(), 0);
+				buffer[0] = '\0';
+				bzero(buffer, 1024);
 				
 				if(s.rfind("/sort", 0) == 0)
 				{
@@ -230,6 +264,8 @@ int main()
 					bzero(buffer, 1024);
 					n = read(sock_fd,buffer,1024);
 					s = buffer;
+					buffer[0] = '\0';
+					bzero(buffer, 1024);
 					if(s.rfind("ERROR", 0) != 0)
 					{
 						cout << s << "\n";
@@ -259,6 +295,9 @@ int main()
 					bzero(buffer, 1024);
 					n = read(sock_fd,buffer,1024);
 					s = buffer;
+					buffer[0] = '\0';
+					bzero(buffer, 1024);
+
 					if(s.rfind("ERROR", 0) != 0)
 					{
 						rcv_file(sock_fd);
@@ -282,6 +321,8 @@ int main()
 					bzero(buffer, 1024);
 					n = read(sock_fd,buffer,1024);
 					s = buffer;
+					buffer[0] = '\0';
+					bzero(buffer, 1024);
 					
 					if(s.rfind("ERROR", 0) != 0)
 					{

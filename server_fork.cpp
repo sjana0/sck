@@ -19,7 +19,7 @@
 #define NOT_SORTED_ALONG_FIELD "ERROR: files aren't sorted along the field axis\n"
 #define SUCCESSFUL_CONNECTION "successful connection"
 #define SERVER_BUSY "unsuccessful connection server is busy(MAX 5 client reached)"
-#define MAX_CHILD 2
+#define MAX_CHILD 4
 #define MAX_VALID_YR 9999
 #define MIN_VALID_YR 1800
 
@@ -61,17 +61,24 @@ void send_file(string filename, string filenameSend, int sock)
 	char buffer[1024];
 	string s;
 	ifstream fi(filename);
-	write(sock, filenameSend.c_str(), filenameSend.length());
+	strcpy(buffer, filenameSend.c_str());
+	write(sock, buffer, filenameSend.length());
+	buffer[0] = '\0';
+	bzero(buffer, 1024);
 	
 	while(!fi.eof())
 	{
+		buffer[0] = '\0';
 		bzero(buffer, 1024);
 		read(sock, buffer, 1024);
 		s = buffer;
 		if(s.compare("acknowledged") == 0)
 		{
+			bzero(buffer, 1024);
 			getline(fi, s);
-			write(sock, s.c_str(), s.length());
+			strcpy(buffer, s.c_str());
+			write(sock, buffer, s.length());
+			buffer[0] = '\0';
 		}
 	}
 
@@ -81,8 +88,13 @@ void send_file(string filename, string filenameSend, int sock)
 	
 	if(s.compare("acknowledged") == 0)
 	{
+		buffer[0] = '\0';
+		bzero(buffer, 1024);
 		s = "eof";
-		write(sock, s.c_str(), s.length());
+		strcpy(buffer, s.c_str());
+		write(sock, buffer, s.length());
+		buffer[0] = '\0';
+		bzero(buffer, 1024);
 	}
 }
 
@@ -108,10 +120,14 @@ string rcv_file(int sock, int& count)
 	ofstream fo(filename);
 	
 	// send ack on recieving filename
+	buffer[0] = '\0';
+	bzero(buffer, 1024);
 	s = "acknowledged";
-	write(sock, s.c_str(), s.length());
+	strcpy(buffer, s.c_str());
+	write(sock, buffer, s.length());
 	
 	// reads the first line of the file
+	buffer[0] = '\0';
 	bzero(buffer, 1024);
 	read(sock, buffer, 1024);
 	
@@ -123,9 +139,13 @@ string rcv_file(int sock, int& count)
 		s1 = s;
 
 		// first line ack
+		buffer[0] = '\0';
+		bzero(buffer, 1024);
 		s = "acknowledged";
-		write(sock, s.c_str(), s.length());
+		strcpy(buffer, s.c_str());
+		write(sock, buffer, s.length());
 		
+		buffer[0] = '\0';
 		bzero(buffer, 1024);
 		read(sock, buffer, 1024);
 		s = buffer;
@@ -142,6 +162,8 @@ string rcv_file(int sock, int& count)
 			fo << s1 << endl;
 		}
 	}
+	buffer[0] = '\0';
+	bzero(buffer, 1024);
 	fo.close();
 	return filename;
 }
@@ -229,7 +251,6 @@ public:
 		int cnt;
 		validity = true;
 		cout << "record inside class: " << s << "\n";
-		regex reg("([0-3][0-9]\\.[0-1][0-2]\\.[1-2][0-9][0-9][0-9] \\S* \\d*\\.?\\d*)");
 		string* str = split(s, ' ', cnt);
 		date = str[0];
 		item = str[1];
@@ -304,19 +325,34 @@ public:
 	}
 };
 
-bool recCompareD(record &lhs, record &rhs)
+bool SrecCompareD(record &lhs, record &rhs)
 {
 	return (compareDate(lhs.date, rhs.date) < 0);
 }
 
-bool recCompareN(record &lhs, record &rhs)
+bool recCompareD(record &lhs, record &rhs)
+{
+	return (compareDate(lhs.date, rhs.date) <= 0);
+}
+
+bool SrecCompareN(record &lhs, record &rhs)
 {
 	return (lhs.item.compare(rhs.item) < 0);
 }
 
-bool recCompareP(record &lhs, record &rhs)
+bool recCompareN(record &lhs, record &rhs)
+{
+	return (lhs.item.compare(rhs.item) <= 0);
+}
+
+bool SrecCompareP(record &lhs, record &rhs)
 {
 	return (lhs.price < rhs.price);
+}
+
+bool recCompareP(record &lhs, record &rhs)
+{
+	return (lhs.price <= rhs.price);
 }
 
 bool isSorted(string filename, char by)
@@ -325,9 +361,9 @@ bool isSorted(string filename, char by)
 	ifstream fi(filename);
 	string s1, s2;
 
+	getline(fi, s1);
 	while(!fi.eof())
 	{
-		getline(fi, s1);
 		getline(fi, s2);
 		record rec1(s1);
 		record rec2(s2);
@@ -343,8 +379,12 @@ bool isSorted(string filename, char by)
 		{
 			isSorted = recCompareP(rec1, rec2);
 		}
+		s1 = s2;
 		if(!isSorted)
+		{
+			cout << "it's this: " << rec1.giveString() << " | " << rec2.giveString() << "\n";
 			break;
+		}
 	}
 	return isSorted;
 }
@@ -395,16 +435,16 @@ string sort_bills(string filename, char by, int count)
 	// return "ERROR:";
 	if(by == 'D')
 	{
-		sort(rec, rec+count, recCompareD);
+		sort(rec, rec+count, SrecCompareD);
 		cout << "reached here-1: " << filename << "\n";
 	}
 	else if(by == 'N')
 	{
-		sort(rec, rec+count, recCompareN);
+		sort(rec, rec+count, SrecCompareN);
 	}
 	else if(by == 'P')
 	{
-		sort(rec, rec+count, recCompareP);
+		sort(rec, rec+count, SrecCompareP);
 	}
 	
 	ofstream fo(filename);
@@ -451,12 +491,14 @@ string merge(string filename1, string filename2, char by)
 		else
 		{
 			fo.close();
+			remove(filename.c_str());
 			return NOT_SORTED_ALONG_FIELD;
 		}
 	}
 	else
 	{
 		fo.close();
+		remove(filename.c_str());
 		return INVALID_BILL;
 	}
 	fo.close();
@@ -497,7 +539,10 @@ string similarity(string filename1, string filename2)
 		return filename;
 	}
 	else
+	{
+		remove(filename.c_str());
 		return INVALID_BILL;
+	}
 }
 
 
@@ -575,17 +620,21 @@ int main()
 			else
 			{
 				// child process: process command from client
+				string s;
 				close(sock_fd);
 				bzero(buffer, 1024);
-				sprintf(buffer, "%s", SUCCESSFUL_CONNECTION);
-				write(new_sock, buffer, strlen(buffer));
+				s = SUCCESSFUL_CONNECTION;
+				strcpy(buffer, s.c_str());
+				write(new_sock, buffer, s.length());
 				buffer[0] = '\0';
+				bzero(buffer, 1024);
 
 				valread = read( new_sock , buffer, 1024);
-				string s(buffer);
+				s = buffer;
 
 				bool passFile = false;
 				while(valread > 0 && s.compare("/exit") != 0) {
+					passFile = false;
 					int count = 0;
 					string* str = split(s, ' ', count);
 					string filename = "";
@@ -599,7 +648,7 @@ int main()
 						int cont = 0;
 						filename = rcv_file(new_sock, cont);
 						filename = sort_bills(filename, by, cont);
-						if((!filename.rfind("ERROR", 0) == 0) && (filename.rfind(".txt") == filename.length()-4))
+						if((!filename.rfind("ERROR:", 0) == 0) && (filename.rfind(".txt") == filename.length()-4))
 							passFile = true;
 					}
 					// merge
@@ -612,11 +661,15 @@ int main()
 						filenameSend = str[3];
 						int cont;
 
-						rcv_file(new_sock, cont);
-						rcv_file(new_sock, cont);
+						filename1 = rcv_file(new_sock, cont);
+						filename2 = rcv_file(new_sock, cont);
 
 						filename = merge(filename1, filename2, str[count - 1][0]);
-						if((!filename.rfind("ERROR", 0) == 0) && (filename.rfind(".txt") == filename.length()-4))
+
+						remove(filename1.c_str());
+						remove(filename2.c_str());
+
+						if((!filename.rfind("ERROR:", 0) == 0) && (filename.rfind(".txt") == filename.length()-4))
 							passFile = true;
 					}
 
@@ -630,21 +683,34 @@ int main()
 
 						filenameSend = filename1.substr(0, filename1.length() - 4) + "_sim_" + filename2;
 						cout << "filename1: " << filename1 << "filename2: " << filename2 << "filenameSend: " << filenameSend << "\n";
-						rcv_file(new_sock, cont);
-						rcv_file(new_sock, cont);
-						filename = similarity("server_" + filename1, "server_" + filename2);
-						if((!filename.rfind("ERROR", 0) == 0) && (filename.rfind(".txt") == filename.length()-4))
+						
+						filename1 = rcv_file(new_sock, cont);
+						filename2 = rcv_file(new_sock, cont);
+						
+						filename = similarity(filename1, filename2);
+
+						remove(filename1.c_str());
+						remove(filename2.c_str());
+						
+						if((!filename.rfind("ERROR:", 0) == 0) && (filename.rfind(".txt") == filename.length()-4))
 							passFile = true;
 					}
 					if(!passFile)
 					{
-						send(new_sock, filename.c_str(), filename.length(), 0);
+						bzero(buffer, 1024);
+						strcpy(buffer, filename.c_str());
+						send(new_sock, buffer, filename.length(), 0);
+						buffer[0] = '\0';
+						bzero(buffer, 1024);
 					}
 					else
 					{
 						cout << "outside passfile: "<<filename <<"\n";
 						s = "Successful command\n";
-						send(new_sock, s.c_str(), s.length(), 0);
+						strcpy(buffer, s.c_str());
+						send(new_sock, buffer, s.length(), 0);
+						buffer[0] = '\0';
+						bzero(buffer, 1024);
 						send_file(filename, filenameSend, new_sock);
 						remove(filename.c_str());
 					}
@@ -652,6 +718,8 @@ int main()
 					bzero(buffer, 1024);
 					valread = read( new_sock , buffer, 1024);
 					s = buffer;
+					buffer[0] = '\0';
+					bzero(buffer, 1024);
 					cout << s << "\n";
 				}
 				close(new_sock);
@@ -665,9 +733,11 @@ int main()
 		{
 			cout << "doing it\n";
 			bzero(buffer, 1024);
-			sprintf(buffer, "%s", SERVER_BUSY);
-			write(new_sock, buffer, strlen(buffer));
+			string s = SERVER_BUSY;
+			strcpy(buffer, s.c_str());
+			write(new_sock, buffer, s.length());
 			buffer[0] = '\0';
+			bzero(buffer, 1024);
 			close(new_sock);
 		}
 	}
