@@ -28,7 +28,6 @@ and sock
 
 void send_file(string filename, int sock)
 {
-	cout << "inside send function1\n";
 	char buffer[1024];
 	string s;
 
@@ -40,38 +39,36 @@ void send_file(string filename, int sock)
 	buffer[0] = '\0';
 	bzero(buffer, 1024);
 	
-	cout << "inside send function2\n";
 	while(!fi.eof())
 	{
 		// it reads first ack for filename from server
 		buffer[0] = '\0';
 		bzero(buffer, 1024);
 		read(sock, buffer, 1024);
+		
 		s = buffer;
-		cout << "1: " << s << "\n";
+		buffer[0] = '\0';
+		bzero(buffer, 1024);
 		
 		if(s.compare("acknowledged") == 0)
 		{
 			// cout << "inside send function3\n" << s << "\n";
 			// reads first line from file and sends
-			buffer[0] = '\0';
-			bzero(buffer, 1024);
 			getline(fi, s);
 			strcpy(buffer, s.c_str());
 
-			cout << "2: " << s << "\n";
 			write(sock, buffer, s.length());
-			cout << "3: " << s << "\n";
+
+			buffer[0] = '\0';
+			bzero(buffer, 1024);
 		}
 	}
-	buffer[0] = '\0';
-	bzero(buffer, 1024);
 	read(sock, buffer, 1024);
 	s = buffer;
+	buffer[0] = '\0';
+	bzero(buffer, 1024);
 	if(s.compare("acknowledged") == 0)
 	{
-		buffer[0] = '\0';
-		bzero(buffer, 1024);
 		s = "eof";
 		strcpy(buffer, s.c_str());
 		write(sock, buffer, s.length());
@@ -86,19 +83,18 @@ filename send from server and sock
 
 string rcv_file(int sock)
 {
-	cout << "recieve file\n";
 	char buffer[1024];
 	string s;
 	
 	bzero(buffer, 1024);
 	read(sock, buffer, 1024);
 	string filename = buffer;
-	cout << "recieve file\n" << filename << "\n";
+	buffer[0] = '\0';
+	bzero(buffer, 1024);
 	
 	ofstream fo(filename);
 	
 	s = "acknowledged";
-	buffer[0] = '\0';
 	strcpy(buffer, s.c_str());
 	write(sock, buffer, s.length());
 	
@@ -106,14 +102,14 @@ string rcv_file(int sock)
 	bzero(buffer, 1024);
 	read(sock, buffer, 1024);
 	s = buffer;
+	buffer[0] = '\0';
+	bzero(buffer, 1024);
 	
 	string s1;
 	while(s.compare("eof") != 0)
 	{
 		s1 = s;
 
-		buffer[0] = '\0';
-		bzero(buffer, 1024);
 		s = "acknowledged";
 		strcpy(buffer, s.c_str());
 		write(sock, buffer, s.length());
@@ -122,7 +118,8 @@ string rcv_file(int sock)
 		bzero(buffer, 1024);
 		read(sock, buffer, 1024);
 		s = buffer;
-		cout << s1 << "\n";
+		buffer[0] = '\0';
+		bzero(buffer, 1024);
 		if(s.compare("eof") == 0)
 			fo << s1;
 		else
@@ -141,7 +138,6 @@ bool command_check(string s, string& err)
 	{
 		if((s.rfind("/sort", 0) == 0 || s.rfind("/merge", 0) == 0) && (s[s.length()-1] == 'D' || s[s.length()-1] == 'N' || s[s.length()-1] == 'P'))
 		{
-			cout << "ss: " << s << " +: " << s.find(" ") << " -: " << s.rfind(" ") << "\n";
 			int p = s.find(" ") + 1;
 			int q = s.rfind(" ");
 			s1 = s.substr(p, q-p);
@@ -153,7 +149,6 @@ bool command_check(string s, string& err)
 					j++;
 				}
 			}
-			cout << "diligency: "<< j << "\n";
 			if(s.rfind("/sort", 0) == 0 && j == 0)
 			{
 				err = "";
@@ -166,7 +161,6 @@ bool command_check(string s, string& err)
 			}
 			else
 			{
-				cout << "ss: " << s << "\n";
 				err = WRONG_NUMBER_FILE;
 				return false;
 			}
@@ -230,7 +224,6 @@ int main()
 	int sock_fd, n;
 	char buffer[1024];
 	string s;
-	regex reg("(\\/\\W*(merge|sort|similarity)\\W*\\s(.*\\.txt\\s?)+\\s?[D|N|P]?)");
 	smatch m;
 	// smatch match;
 	struct hostent* server;
@@ -274,7 +267,6 @@ int main()
 			{
 				// cout << "boooyay\n" << s;
 				// break;
-				cout << s << "\n";
 				buffer[0] = '\0';
 				bzero(buffer, 1024);
 				strcpy(buffer, s.c_str());
@@ -284,7 +276,6 @@ int main()
 				
 				if(s.rfind("/sort", 0) == 0)
 				{
-					cout << "sorting\n";
 					int count;
 					string* str = split(s, ' ', count);
 					char by = str[count - 1][0];

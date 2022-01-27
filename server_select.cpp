@@ -58,6 +58,7 @@ void send_file(string filename, string filenameSend, int sock)
 	char buffer[1024];
 	string s;
 	ifstream fi(filename);
+	bzero(buffer, 1024);
 	strcpy(buffer, filenameSend.c_str());
 	write(sock, buffer, filenameSend.length());
 	buffer[0] = '\0';
@@ -69,24 +70,24 @@ void send_file(string filename, string filenameSend, int sock)
 		bzero(buffer, 1024);
 		read(sock, buffer, 1024);
 		s = buffer;
+		bzero(buffer, 1024);
 		if(s.compare("acknowledged") == 0)
 		{
-			bzero(buffer, 1024);
 			getline(fi, s);
 			strcpy(buffer, s.c_str());
 			write(sock, buffer, s.length());
 			buffer[0] = '\0';
+			bzero(buffer, 1024);
 		}
 	}
 
-	bzero(buffer, 1024);
 	read(sock, buffer, 1024);
 	s = buffer;
+	buffer[0] = '\0';
+	bzero(buffer, 1024);
 	
 	if(s.compare("acknowledged") == 0)
 	{
-		buffer[0] = '\0';
-		bzero(buffer, 1024);
 		s = "eof";
 		strcpy(buffer, s.c_str());
 		write(sock, buffer, s.length());
@@ -111,14 +112,14 @@ string rcv_file(int sock, int& count)
 
 	bzero(buffer, 1024);
 	read(sock, buffer, 1024);
-	
 	filename = buffer;
+	buffer[0] = '\0';
+	bzero(buffer, 1024);
+	
 	filename = "server_" + filename;
 	ofstream fo(filename);
 	
 	// send ack on recieving filename
-	buffer[0] = '\0';
-	bzero(buffer, 1024);
 	s = "acknowledged";
 	strcpy(buffer, s.c_str());
 	write(sock, buffer, s.length());
@@ -127,8 +128,10 @@ string rcv_file(int sock, int& count)
 	buffer[0] = '\0';
 	bzero(buffer, 1024);
 	read(sock, buffer, 1024);
-	
 	s = buffer;
+	buffer[0] = '\0';
+	bzero(buffer, 1024);
+	
 	string s1;
 
 	while(s.compare("eof") != 0)
@@ -136,8 +139,7 @@ string rcv_file(int sock, int& count)
 		s1 = s;
 
 		// first line ack
-		buffer[0] = '\0';
-		bzero(buffer, 1024);
+		
 		s = "acknowledged";
 		strcpy(buffer, s.c_str());
 		write(sock, buffer, s.length());
@@ -146,13 +148,13 @@ string rcv_file(int sock, int& count)
 		bzero(buffer, 1024);
 		read(sock, buffer, 1024);
 		s = buffer;
+		buffer[0] = '\0';
+		bzero(buffer, 1024);
 		
-		cout << "line: " << s1 << "\n";
 		count++;
 		if(s.compare("eof") == 0)
 		{
 			fo << s1;
-			cout << "eof\n";
 		}
 		else
 		{
@@ -247,13 +249,11 @@ public:
 	{
 		int cnt;
 		validity = true;
-		cout << "record inside class: " << s << "\n";
 		string* str = split(s, ' ', cnt);
 		date = str[0];
 		item = str[1];
 		if(cnt != 3)
 		{
-			cout << "here invalidated2\n";
 			validity = false;
 			date = "";
 			item = "";
@@ -261,7 +261,6 @@ public:
 		}
 		else if(!isValidDate(date))
 		{
-			cout << "here invalidated3\n";
 			validity = false;
 			date = "";
 			price = -1;
@@ -273,11 +272,9 @@ public:
 				date = str[0];
 				item = str[1];
 				price = stod(str[2]);
-				cout << "ok\n";
 			}
 			catch(int x)
 			{
-				cout << "here invalidated4\n";
 				price = -1;
 				validity = false;
 			}
@@ -379,7 +376,6 @@ bool isSorted(string filename, char by)
 		s1 = s2;
 		if(!isSorted)
 		{
-			cout << "it's this: " << rec1.giveString() << " | " << rec2.giveString() << "\n";
 			break;
 		}
 	}
@@ -412,13 +408,11 @@ string sort_bills(string filename, char by, int count)
 	// fi.open(filename, ios::in);
 	string s;
 	record rec[count+5];
-	cout << "sort print " << filename << " by " << by << "\n";
 	count = 0;
 	// return "ERROR:";
 	while(!fi.eof())
 	{
 		getline(fi, s);
-		cout << s << "\n";
 		rec[count] = record(s);
 		if(!rec[count].isRecValid())
 		{
@@ -426,14 +420,12 @@ string sort_bills(string filename, char by, int count)
 			return INVALID_BILL;
 		}
 		count++;
-		cout << "inside sortbills function: " << s << "\n";
 	}
 	fi.close();
 	// return "ERROR:";
 	if(by == 'D')
 	{
 		sort(rec, rec+count, SrecCompareD);
-		cout << "reached here-1: " << filename << "\n";
 	}
 	else if(by == 'N')
 	{
@@ -452,9 +444,7 @@ string sort_bills(string filename, char by, int count)
 		else
 			fo << rec[i].giveString();
 	}
-	cout << "reached here0: " << filename << "\n";
 	fo.close();
-	cout << "reached here1: " << filename << "\n";
 	return filename;
 }
 
@@ -500,10 +490,8 @@ string merge(string filename1, string filename2, char by)
 	}
 	fo.close();
 	remove_empty_line(filename);
-	cout << "reached hear2: "<< filename << "\n";
 	// sleep(2);
 	sort_bills(filename, by, count);
-	cout << "reached hear3: "<< filename << "\n";
 	return filename;
 }
 
@@ -531,7 +519,6 @@ string similarity(string filename1, string filename2)
 		}
 		fi1.close();
 		fi2.close();
-		cout << "calling out the function\n";
 		remove_empty_line(filename);
 		return filename;
 	}
@@ -627,7 +614,7 @@ int main(int argc , char *argv[])
  
 		//wait for an activity on one of the sockets , timeout is NULL , so wait indefinitely
 		activity = select( max_sd + 1 , &readfds , NULL , NULL , NULL);
-   
+
 		if ((activity < 0) && (errno!=EINTR)) 
 		{
 			printf("select error");
@@ -641,7 +628,7 @@ int main(int argc , char *argv[])
 				perror("accept");
 				exit(EXIT_FAILURE);
 			}
-			char buffer[1025];
+			char buffer[1024];
 		 
 			//inform user of socket number - used in send and receive commands
 			// printf("New connection , socket fd is %d , ip is : %s , port : %d \n" , new_socket , inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
@@ -680,7 +667,7 @@ int main(int argc , char *argv[])
 		for (i = 0; i < max_clients; i++) 
 		{
 			sd = client_socket[i];
-			char buffer[1025];
+			char buffer[1024];
 			if (FD_ISSET( sd , &readfds)) 
 			{
 				//Check if it was for closing , and also read the incoming message
@@ -701,11 +688,12 @@ int main(int argc , char *argv[])
 					//set the string terminating NULL byte on the end of the data read
 					buffer[valread] = '\0';
 					string s = buffer;
-					cout << s << "\n";
+					buffer[0] = '\0';
+					bzero(buffer, 1024);
 					// break;
 
 					bool passFile = false;
-					while(valread > 0 && s.compare("/exit") != 0) {
+					if(valread > 0 && s.compare("/exit") != 0) {
 						passFile = true;
 						int count = 0;
 						string* str = split(s, ' ', count);
@@ -716,7 +704,6 @@ int main(int argc , char *argv[])
 						if(str[0].compare("/sort") == 0)
 						{
 							char by = str[2][0];
-							cout << s << "\n" << by << "\n";
 							int cont = 0;
 							filename = rcv_file(sd, cont);
 							filename = sort_bills(filename, by, cont);
@@ -754,7 +741,6 @@ int main(int argc , char *argv[])
 							int cont = 0;
 
 							filenameSend = filename1.substr(0, filename1.length() - 4) + "_sim_" + filename2;
-							cout << "filename1: " << filename1 << "filename2: " << filename2 << "filenameSend: " << filenameSend << "\n";
 							
 							filename1 = rcv_file(sd, cont);
 							filename2 = rcv_file(sd, cont);
@@ -778,7 +764,6 @@ int main(int argc , char *argv[])
 						}
 						else
 						{
-							cout << "outside passfile: "<<filename <<"\n";
 							s = "Successful command\n";
 							buffer[0] = '\0';
 							bzero(buffer, 1024);
@@ -790,16 +775,22 @@ int main(int argc , char *argv[])
 							remove(filename.c_str());
 						}
 						// break;
-						buffer[0] = '\0';
-						bzero(buffer, 1024);
-						valread = read( sd , buffer, 1024);
-						s = buffer;
-						buffer[0] = '\0';
-						bzero(buffer, 1024);
-						cout << s << "\n";
+						// buffer[0] = '\0';
+						// bzero(buffer, 1024);
+						// valread = read( sd , buffer, 1024);
+						// s = buffer;
+						// buffer[0] = '\0';
+						// bzero(buffer, 1024);
+						// cout << s << "\n";
 					}
-					close(sd);
-					// child process
+					else
+					{
+						getpeername(sd , (struct sockaddr*)&address , (socklen_t*)&addrlen);
+						printf("Host disconnected , ip %s , port %d \n" , inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
+						close(sd);
+						client_socket[i] = 0;
+					}
+						// child process
 				}
 			}
 		}
