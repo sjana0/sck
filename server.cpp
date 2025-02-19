@@ -8,6 +8,9 @@
 #include <sys/sendfile.h>
 #include <string.h>
 #include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
 #define PORT 5000
 
 // server messages
@@ -19,6 +22,9 @@
 #define WRONG_COMMAND "command not recognized"
 
 using namespace std;
+
+vector<ssize_t> offsets;
+int fd;
 
 int Lines = -1;
 
@@ -52,8 +58,13 @@ int countLines()
 	{
 		while((read = getline(&line, &len, fp)) != -1)
 		{
+			offsets.push_back(read);
 			count++;
 		}
+	}
+	for(int i = 1; i < offsets.size(); i++)
+	{
+		offsets[i] = offsets[i] + offsets[i-1];
 	}
 	fclose(fp);
 	return count;
@@ -61,110 +72,64 @@ int countLines()
 
 string putLine(string s, int k)
 {
-	make_copy();
-	FILE* fp1 = fopen("server_file_temp.txt", "r");
-	FILE* fp2 = fopen("server_file.txt", "w");
 	if(Lines == -1)
 		Lines = countLines();
 	if(k < 0)
 	{
 		k = Lines + k;
 	}
-	ssize_t read;
-	char* line;
-	size_t len = 0;
-	int count = 0;
-	bool flg = false;
-
-	if(fp2 != NULL && fp1 != NULL)
-	{	
-		if(s[s.length()-1] == '\n')
-		{
-			s = s.substr(0, s.length()-1);
-		}
-		while(read = getline(&line, &len, fp1) != -1)
-		{
-			if(count == k)
-			{
-				s = to_string(k) + "\t" + s + "\n";
-				fputs(s.c_str(), fp2);
-				flg = true;
-			}
-			count++;
-			fputs(line, fp2);
-		}
-		if(flg)
-		{
-			fclose(fp1);
-			fclose(fp2);
-			remove("server_file_temp.txt");
-			return FILE_WRITE_SUCCESS;
-		}
-		else
-		{
-			fclose(fp1);
-			fclose(fp2);
-			remove("server_file_temp.txt");
-			return FILE_WRITE_FAILED;
-		}
-	}
+	if(k >= Lines)
+		return FILE_INDX_OUT_RANGE;
 	else
 	{
-		fclose(fp1);
-		fclose(fp2);
-		remove("server_file_temp.txt");
-		return FILE_DOES_NOT_EXIST;
+		lseek(fd, 0, SEEK_SET);
+		string fileContent;
+		char buffer[1024];
+		ssize_t bytesRead;
+		while ((bytesRead = read(fd, buffer, sizeof(buffer))) > 0)
+		{
+			fileContent.append(buffer, bytesRead);
+		}
+		vector<string> lines;
+		stringstream ss(fileContent);
+		string line;
+		while (getline(ss, line))
+		{
+			if(k == lines.size())
+			{
+				lines.push_back(s);
+				lines.push_back(line);
+			}
+			else {
+				lines.push_back(line);
+			}
+		}
+		lseek(fd, 0, SEEK_SET);
+		ftruncate(fd, 0); // Clear the file content
+		for (int i = 0; i < lines.size(); i++)
+		{
+			string lineToWrite;
+			if(i != lines.size() - 1)
+				lineToWrite = lines[i] + "\n";
+			else 
+				lineToWrite = lines[i];
+			write(fd, lineToWrite.c_str(), lineToWrite.length());
+		}
+		return FILE_WRITE_SUCCESS;
 	}
 }
 
 string putLine(string s)
 {
-	make_copy();
-	FILE* fp1 = fopen("server_file_temp.txt", "r");
-	FILE* fp2 = fopen("server_file.txt", "w");
-	
-	ssize_t read;
-	char* line;
-	size_t len = 0;
-	int count = 0;
-
-	if(fp2 != NULL && fp1 != NULL)
-	{	
-		if(s[s.length()-1] == '\n')
-		{
-			s = s.substr(0, s.length()-1);
-		}
-		while(read = getline(&line, &len, fp1) != -1)
-		{
-			count++;
-			fputs(line, fp2);
-		}
-		s = "\n" + to_string(count+1) + "\t" + s;
-		fputs(s.c_str(), fp2);
-		fclose(fp1);
-		fclose(fp2);
-		remove("server_file_temp.txt");
-		return FILE_WRITE_SUCCESS;
-	}
-	else
-	{
-		fclose(fp1);
-		fclose(fp2);
-		remove("server_file_temp.txt");
-		return FILE_DOES_NOT_EXIST;
-	}
+	lseek(fd, 0, SEEK_END);
+	write(fd, "\r\n", 1);
+	write(fd, s.c_str(), s.length());
+	return FILE_WRITE_SUCCESS;
 }
 
 string readLine(int k)
 {
-	FILE* fp = fopen("server_file.txt", "r");
-	ssize_t read;
-	char* line;
-	size_t len = 0;
-	int count = 0;
-	
-	if(k < 0)
-	{
+	if(k < 0) {
 		if(Lines == -1)
 		{
 			Lines = countLines();
@@ -173,26 +138,20 @@ string readLine(int k)
 	}
 	if(Lines == 0)
 		return FILE_EMPTY;
-	
-	if(fp == NULL)
-	{
-		// perror("error reading file");
-		return FILE_DOES_NOT_EXIST;
-	}
+	if(k >= Lines)
+		return FILE_INDX_OUT_RANGE;
 	else
 	{
-		while((read = getline(&line, &len, fp)) != -1)
+		lseek(fd, offsets[k-1], SEEK_SET);
+		char c;
+		string s = "";
+		while(read(fd, &c, 1) > 0 && c != '\n')
 		{
-			if(count == k)
-			{
-				fclose(fp);
-				return string(line);
-			}
-			count++;
+			s += c;
 		}
+		s += '\0';
+		return s;
 	}
-	fclose(fp);
-	return FILE_INDX_OUT_RANGE;
 }
 
 int main(int argc, char const *argv[])
@@ -202,6 +161,13 @@ int main(int argc, char const *argv[])
 	int opt = 1, i, j;
 	int addrlen = sizeof(address);
 	char buffer[1024];
+
+	fd = open("server_file.txt", O_RDWR);
+	if(fd == -1)
+	{
+		perror("error opening file");
+		exit(EXIT_FAILURE);
+	}
 
 	bzero((char *) &address, sizeof(address));
 
@@ -283,4 +249,5 @@ int main(int argc, char const *argv[])
 		s = buffer;
 	}
 	close(sock_fd);
+	close(fd);
 }
